@@ -24,3 +24,210 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ===== React Grid Layout & Resize Handle Styles ===== */
+
+/* Ensure grid items don't clip resize handles */
+.react-grid-item {
+  overflow: visible !important;
+}
+
+/* Base resize handle styling - HIDDEN by default */
+.react-resizable-handle {
+  position: absolute;
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+/* Only show handles when grid is in edit mode AND on hover */
+.edit-mode-grid .react-grid-item:hover .react-resizable-handle {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Corner handles */
+.react-resizable-handle-se,
+.react-resizable-handle-sw,
+.react-resizable-handle-ne,
+.react-resizable-handle-nw {
+  width: 16px;
+  height: 16px;
+}
+
+.react-resizable-handle-se {
+  bottom: -4px;
+  right: -4px;
+  cursor: se-resize;
+}
+
+.react-resizable-handle-sw {
+  bottom: -4px;
+  left: -4px;
+  cursor: sw-resize;
+}
+
+.react-resizable-handle-ne {
+  top: -4px;
+  right: -4px;
+  cursor: ne-resize;
+}
+
+.react-resizable-handle-nw {
+  top: -4px;
+  left: -4px;
+  cursor: nw-resize;
+}
+
+/* Edge handles */
+.react-resizable-handle-n,
+.react-resizable-handle-s {
+  height: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+}
+
+.react-resizable-handle-n {
+  top: -4px;
+  cursor: n-resize;
+}
+
+.react-resizable-handle-s {
+  bottom: -4px;
+  cursor: s-resize;
+}
+
+.react-resizable-handle-e,
+.react-resizable-handle-w {
+  width: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 40px;
+}
+
+.react-resizable-handle-e {
+  right: -4px;
+  cursor: e-resize;
+}
+
+.react-resizable-handle-w {
+  left: -4px;
+  cursor: w-resize;
+}
+
+/* Subtle visual indicators - ONLY in edit mode */
+.edit-mode-grid .react-resizable-handle::after {
+  content: '';
+  position: absolute;
+  background: rgba(168, 85, 247, 0.7);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.edit-mode-grid .react-resizable-handle:hover::after {
+  background: rgba(168, 85, 247, 1);
+}
+
+/* Corner handle indicators - small rounded squares */
+.edit-mode-grid .react-resizable-handle-se::after,
+.edit-mode-grid .react-resizable-handle-sw::after,
+.edit-mode-grid .react-resizable-handle-ne::after,
+.edit-mode-grid .react-resizable-handle-nw::after {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.edit-mode-grid .react-resizable-handle-se::after {
+  bottom: 2px;
+  right: 2px;
+}
+
+.edit-mode-grid .react-resizable-handle-sw::after {
+  bottom: 2px;
+  left: 2px;
+}
+
+.edit-mode-grid .react-resizable-handle-ne::after {
+  top: 2px;
+  right: 2px;
+}
+
+.edit-mode-grid .react-resizable-handle-nw::after {
+  top: 2px;
+  left: 2px;
+}
+
+/* Edge handle indicators - subtle bars */
+.edit-mode-grid .react-resizable-handle-n::after,
+.edit-mode-grid .react-resizable-handle-s::after {
+  width: 24px;
+  height: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.edit-mode-grid .react-resizable-handle-n::after {
+  top: 2px;
+}
+
+.edit-mode-grid .react-resizable-handle-s::after {
+  bottom: 2px;
+}
+
+.edit-mode-grid .react-resizable-handle-e::after,
+.edit-mode-grid .react-resizable-handle-w::after {
+  width: 3px;
+  height: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.edit-mode-grid .react-resizable-handle-e::after {
+  right: 2px;
+}
+
+.edit-mode-grid .react-resizable-handle-w::after {
+  left: 2px;
+}
+
+/* ===== Page Carousel Styles ===== */
+
+.page-carousel {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE/Edge */
+}
+
+.page-carousel::-webkit-scrollbar {
+  display: none;
+  /* Chrome/Safari/Opera */
+}
+
+.page-slide {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* Smooth page transitions */
+.page-carousel {
+  scroll-behavior: smooth;
+}
+
+/* Empty page placeholder */
+.empty-page-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  color: rgba(255, 255, 255, 0.3);
+}
