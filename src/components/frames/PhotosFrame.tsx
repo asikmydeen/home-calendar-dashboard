@@ -27,6 +27,7 @@ export default function PhotosFrame() {
         fill
         className="object-cover transition-opacity duration-1000"
         priority
+        sizes="100vw"
       />
       <div className="absolute bottom-4 right-4 text-white/50 text-xs">
         via Google Photos

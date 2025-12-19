@@ -19,8 +19,10 @@ import {
     Calendar,
     Users,
     Repeat,
-    Tag
+    Tag,
+    AlertCircle
 } from 'lucide-react';
+import { z } from 'zod';
 
 const RECURRENCE_OPTIONS: { id: RecurrencePattern; label: string }[] = [
     { id: 'none', label: 'Does not repeat' },
@@ -42,6 +44,28 @@ const CATEGORY_OPTIONS: { id: EventCategory; label: string }[] = [
     { id: 'meal', label: 'Meal' },
     { id: 'routine', label: 'Routine' },
 ];
+
+const eventSchema = z.object({
+    title: z.string().min(1, "Title is required"),
+    startDate: z.string().min(1, "Start date is required"),
+    startTime: z.string().optional(),
+    endDate: z.string().min(1, "End date is required"),
+    endTime: z.string().optional(),
+    isAllDay: z.boolean(),
+}).refine(data => {
+    try {
+        const startStr = `${data.startDate}T${data.isAllDay ? '00:00' : (data.startTime || '00:00')}`;
+        const endStr = `${data.endDate}T${data.isAllDay ? '23:59' : (data.endTime || '23:59')}`;
+        const start = new Date(startStr);
+        const end = new Date(endStr);
+        return end >= start;
+    } catch {
+        return false;
+    }
+}, {
+    message: "End time must be after start time",
+    path: ["endDate"],
+});
 
 export function EventModal() {
     const {
@@ -70,26 +94,65 @@ export function EventModal() {
     const [recurrence, setRecurrence] = useState<RecurrencePattern>('none');
     const [assignedTo, setAssignedTo] = useState<string[]>([]);
 
+    // Validation state
+    const [errors, setErrors] = useState<Record<string, string>>({});
+
     // Initialize form with editing event
     useEffect(() => {
         if (editingEvent) {
             setTitle(editingEvent.title || '');
             setDescription(editingEvent.description || '');
             setLocation(editingEvent.location || '');
-            setStartDate(format(new Date(editingEvent.start), 'yyyy-MM-dd'));
-            setStartTime(format(new Date(editingEvent.start), 'HH:mm'));
-            setEndDate(format(new Date(editingEvent.end), 'yyyy-MM-dd'));
-            setEndTime(format(new Date(editingEvent.end), 'HH:mm'));
+            try {
+                setStartDate(format(new Date(editingEvent.start), 'yyyy-MM-dd'));
+                setStartTime(format(new Date(editingEvent.start), 'HH:mm'));
+                setEndDate(format(new Date(editingEvent.end), 'yyyy-MM-dd'));
+                setEndTime(format(new Date(editingEvent.end), 'HH:mm'));
+            } catch (e) {
+                // Fallback for invalid dates
+                const now = new Date();
+                setStartDate(format(now, 'yyyy-MM-dd'));
+                setStartTime(format(now, 'HH:mm'));
+                setEndDate(format(now, 'yyyy-MM-dd'));
+                setEndTime(format(now, 'HH:mm'));
+            }
             setIsAllDay(editingEvent.isAllDay);
             setCalendarId(editingEvent.calendarId);
             setCategory(editingEvent.category);
             setRecurrence(editingEvent.recurrence);
             setAssignedTo(editingEvent.assignedTo);
+        } else {
+            // Defaults for new event
+            const now = new Date();
+            // Round to nearest 30 min
+            now.setMinutes(Math.ceil(now.getMinutes() / 30) * 30);
+            setStartDate(format(now, 'yyyy-MM-dd'));
+            setStartTime(format(now, 'HH:mm'));
+
+            const end = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour duration
+            setEndDate(format(end, 'yyyy-MM-dd'));
+            setEndTime(format(end, 'HH:mm'));
+
+            setCalendarId(calendars.find(c => c.isDefault)?.id || 'family');
         }
-    }, [editingEvent]);
+        setErrors({});
+    }, [editingEvent, calendars]);
 
     const handleSave = () => {
-        if (!title.trim()) return;
+        // Validate
+        const validationResult = eventSchema.safeParse({
+            title, startDate, startTime, endDate, endTime, isAllDay
+        });
+
+        if (!validationResult.success) {
+            const newErrors: Record<string, string> = {};
+            validationResult.error.issues.forEach(err => {
+                const path = err.path[0] as string;
+                newErrors[path] = err.message;
+            });
+            setErrors(newErrors);
+            return;
+        }
 
         const start = new Date(`${startDate}T${isAllDay ? '00:00' : startTime}`);
         const end = new Date(`${endDate}T${isAllDay ? '23:59' : endTime}`);
@@ -143,9 +206,9 @@ export function EventModal() {
             />
 
             {/* Modal */}
-            <div className="relative bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-zinc-700">
+            <div className="relative bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-zinc-700 max-h-[90vh] flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 shrink-0">
                     <h2 className="text-lg font-semibold text-white">
                         {isEditing ? 'Edit Event' : 'New Event'}
                     </h2>
@@ -158,81 +221,91 @@ export function EventModal() {
                 </div>
 
                 {/* Content */}
-                <div className="px-6 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                <div className="px-6 py-4 space-y-5 overflow-y-auto custom-scrollbar">
                     {/* Title */}
                     <div>
                         <input
                             type="text"
                             value={title}
-                            onChange={(e) => setTitle(e.target.value)}
+                            onChange={(e) => {
+                                setTitle(e.target.value);
+                                if (errors.title) setErrors(prev => ({ ...prev, title: '' }));
+                            }}
                             placeholder="Event title"
-                            className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white placeholder-zinc-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent text-lg"
+                            className={`w-full px-4 py-3 bg-zinc-800 border rounded-xl text-white placeholder-zinc-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent text-lg
+                                ${errors.title ? 'border-red-500' : 'border-zinc-700'}`}
                             autoFocus
                         />
+                        {errors.title && (
+                            <p className="text-red-400 text-sm mt-1 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" /> {errors.title}
+                            </p>
+                        )}
                     </div>
 
                     {/* Date & Time */}
                     <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-zinc-400 text-sm">
-                            <Clock className="w-4 h-4" />
-                            <span>Date & Time</span>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-zinc-400 text-sm">
+                                <Clock className="w-4 h-4" />
+                                <span>Date & Time</span>
+                            </div>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={isAllDay}
+                                    onChange={(e) => setIsAllDay(e.target.checked)}
+                                    className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500 focus:ring-offset-zinc-900"
+                                />
+                                <span className="text-sm text-zinc-300">All day</span>
+                            </label>
                         </div>
-
-                        <label className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                checked={isAllDay}
-                                onChange={(e) => setIsAllDay(e.target.checked)}
-                                className="rounded border-zinc-600 bg-zinc-800 text-purple-500"
-                            />
-                            <span className="text-sm text-zinc-300">All day</span>
-                        </label>
 
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <label className="text-xs text-zinc-500 mb-1 block">Start</label>
-                                <input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm"
-                                />
-                            </div>
-                            {!isAllDay && (
-                                <div>
-                                    <label className="text-xs text-zinc-500 mb-1 block">Time</label>
+                                <div className="flex gap-2">
                                     <input
-                                        type="time"
-                                        value={startTime}
-                                        onChange={(e) => setStartTime(e.target.value)}
+                                        type="date"
+                                        value={startDate}
+                                        onChange={(e) => setStartDate(e.target.value)}
                                         className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm"
                                     />
+                                    {!isAllDay && (
+                                        <input
+                                            type="time"
+                                            value={startTime}
+                                            onChange={(e) => setStartTime(e.target.value)}
+                                            className="w-24 px-2 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm"
+                                        />
+                                    )}
                                 </div>
-                            )}
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
+                            </div>
                             <div>
                                 <label className="text-xs text-zinc-500 mb-1 block">End</label>
-                                <input
-                                    type="date"
-                                    value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm"
-                                />
-                            </div>
-                            {!isAllDay && (
-                                <div>
-                                    <label className="text-xs text-zinc-500 mb-1 block">Time</label>
+                                <div className="flex gap-2">
                                     <input
-                                        type="time"
-                                        value={endTime}
-                                        onChange={(e) => setEndTime(e.target.value)}
-                                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm"
+                                        type="date"
+                                        value={endDate}
+                                        onChange={(e) => setEndDate(e.target.value)}
+                                        className={`w-full px-3 py-2 bg-zinc-800 border rounded-lg text-white text-sm ${errors.endDate ? 'border-red-500' : 'border-zinc-700'}`}
                                     />
+                                    {!isAllDay && (
+                                        <input
+                                            type="time"
+                                            value={endTime}
+                                            onChange={(e) => setEndTime(e.target.value)}
+                                            className="w-24 px-2 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm"
+                                        />
+                                    )}
                                 </div>
-                            )}
+                            </div>
                         </div>
+                        {errors.endDate && (
+                            <p className="text-red-400 text-sm mt-1 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" /> {errors.endDate}
+                            </p>
+                        )}
                     </div>
 
                     {/* Location */}
@@ -255,24 +328,27 @@ export function EventModal() {
                         <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
                             <Calendar className="w-4 h-4" />
                             <span>Calendar</span>
+                            {isEditing && <span className="text-xs text-zinc-600">(Cannot be changed)</span>}
                         </div>
                         <div className="flex flex-wrap gap-2">
                             {calendars.map(cal => (
                                 <button
                                     key={cal.id}
-                                    onClick={() => setCalendarId(cal.id)}
+                                    onClick={() => !isEditing && setCalendarId(cal.id)}
+                                    disabled={isEditing}
                                     className={`
-                    px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 transition-all
-                    ${calendarId === cal.id
-                                            ? 'ring-2 ring-offset-2 ring-offset-zinc-900'
-                                            : 'opacity-60 hover:opacity-100'
+                                        px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 transition-all border
+                                        ${calendarId === cal.id
+                                            ? 'border-transparent bg-zinc-800'
+                                            : 'border-zinc-800 bg-transparent hover:bg-zinc-800'
                                         }
-                  `}
+                                        ${isEditing ? 'opacity-50 cursor-not-allowed' : ''}
+                                    `}
                                     style={{
-                                        backgroundColor: `${cal.color}20`,
                                         color: cal.color,
-                                        '--tw-ring-color': calendarId === cal.id ? cal.color : 'transparent'
-                                    } as React.CSSProperties}
+                                        borderColor: calendarId === cal.id ? cal.color : undefined,
+                                        backgroundColor: calendarId === cal.id ? `${cal.color}20` : undefined
+                                    }}
                                 >
                                     <div
                                         className="w-2 h-2 rounded-full"
@@ -296,12 +372,12 @@ export function EventModal() {
                                     key={cat.id}
                                     onClick={() => setCategory(cat.id)}
                                     className={`
-                    px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 transition-all
-                    ${category === cat.id
+                                        px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 transition-all
+                                        ${category === cat.id
                                             ? 'bg-purple-600 text-white'
                                             : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
                                         }
-                  `}
+                                    `}
                                 >
                                     <span>{CATEGORY_ICONS[cat.id]}</span>
                                     {cat.label}
@@ -339,17 +415,17 @@ export function EventModal() {
                                     key={member.id}
                                     onClick={() => toggleMember(member.id)}
                                     className={`
-                    px-3 py-1.5 rounded-full text-sm flex items-center gap-2 transition-all
-                    ${assignedTo.includes(member.id)
-                                            ? 'ring-2 ring-offset-2 ring-offset-zinc-900'
-                                            : 'opacity-60 hover:opacity-100'
+                                        px-3 py-1.5 rounded-full text-sm flex items-center gap-2 transition-all border
+                                        ${assignedTo.includes(member.id)
+                                            ? 'bg-zinc-800'
+                                            : 'border-zinc-800 bg-transparent hover:bg-zinc-800'
                                         }
-                  `}
+                                    `}
                                     style={{
-                                        backgroundColor: `${member.color}20`,
                                         color: member.color,
-                                        '--tw-ring-color': assignedTo.includes(member.id) ? member.color : 'transparent'
-                                    } as React.CSSProperties}
+                                        borderColor: assignedTo.includes(member.id) ? member.color : undefined,
+                                        backgroundColor: assignedTo.includes(member.id) ? `${member.color}20` : undefined
+                                    }}
                                 >
                                     <span className="text-base">{member.avatar}</span>
                                     {member.name}
@@ -371,7 +447,7 @@ export function EventModal() {
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-800 bg-zinc-800/50">
+                <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-800 bg-zinc-800/50 shrink-0">
                     {isEditing ? (
                         <button
                             onClick={handleDelete}
@@ -393,8 +469,8 @@ export function EventModal() {
                         </button>
                         <button
                             onClick={handleSave}
-                            disabled={!title.trim()}
-                            className="flex items-center gap-2 px-5 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-lg transition-colors"
+                            // Removed disabled={!title.trim()} to allow validation feedback
+                            className="flex items-center gap-2 px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
                         >
                             <Save className="w-4 h-4" />
                             {isEditing ? 'Save' : 'Create'}

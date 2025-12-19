@@ -219,13 +219,14 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
             const stored = localStorage.getItem(STORAGE_KEY);
             if (stored) {
                 const parsed = JSON.parse(stored);
+                // Only load local events from storage, synced events come from Firestore
                 const events = parsed.map((e: any) => ({
                     ...e,
                     start: new Date(e.start),
                     end: new Date(e.end),
                     createdAt: new Date(e.createdAt),
                     updatedAt: new Date(e.updatedAt),
-                }));
+                })).filter((e: CalendarEvent) => !e.id.startsWith('google-'));
                 dispatch({ type: 'SET_EVENTS', payload: events });
             }
         } catch (error) {
@@ -234,112 +235,97 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
         dispatch({ type: 'SET_LOADING', payload: false });
     }, []);
 
-    // Listen to Firestore cached events from Google Calendar
+    // Load events from Google Calendar directly (Client-side Sync)
     useEffect(() => {
-        // Dynamic import to avoid SSR issues
-        const setupFirestoreListener = async () => {
+        let isMounted = true;
+
+        const fetchExternalEvents = async () => {
+            if (!accounts.length) return;
+
+            // Determine date range based on view
+            // For safety, fetch -1 month to +1 month from selected date
+            const startRange = new Date(state.selectedDate);
+            startRange.setMonth(startRange.getMonth() - 1);
+            startRange.setDate(1); // Start of prev month
+
+            const endRange = new Date(state.selectedDate);
+            endRange.setMonth(endRange.getMonth() + 2);
+            endRange.setDate(0); // End of next month
+
             try {
-                const { auth } = await import('@/lib/firebase');
-                const { onAuthStateChanged } = await import('firebase/auth');
-                const { doc, onSnapshot, getFirestore } = await import('firebase/firestore');
+                const { fetchCalendarEvents } = await import('@/lib/googleCalendar');
+                let allGoogleEvents: CalendarEvent[] = [];
 
-                const unsubAuth = onAuthStateChanged(auth, (user) => {
-                    if (!user) return;
+                await Promise.all(accounts.map(async (acc) => {
+                    try {
+                        const events = await fetchCalendarEvents(
+                            'primary',
+                            startRange.toISOString(),
+                            endRange.toISOString(),
+                            acc.accountId
+                        );
 
-                    const db = getFirestore();
-                    const unsubFirestore = onSnapshot(
-                        doc(db, 'cachedEvents', user.uid),
-                        (docSnap) => {
-                            if (docSnap.exists()) {
-                                const data = docSnap.data();
-                                const currentMembers = familyMembersRef.current;
-                                const currentAccounts = accountsRef.current;
+                        // Transform to app format
+                        const mappedEvents = events.map(e => ({
+                            ...e,
+                            // Composite ID: google-{accountId}-{eventId}
+                            id: `google-${acc.accountId}-${e.id}`,
+                            accountId: acc.accountId,
+                            calendarId: `google-primary-${acc.accountId}`,
+                            category: 'synced',
+                            // Ensure dates are Date objects
+                            start: new Date(e.start),
+                            end: new Date(e.end),
+                            createdAt: new Date(),
+                            updatedAt: new Date(),
+                            recurrence: 'none' as const,
+                            assignedTo: acc.linkedMemberId ? [acc.linkedMemberId] : [],
+                        }));
+                        console.log(`[CalendarContext] Fetched ${mappedEvents.length} events for account ${acc.accountId}`);
+                        allGoogleEvents.push(...mappedEvents);
+                    } catch (err) {
+                        console.error(`Failed to fetch events for account ${acc.accountId}:`, err);
+                    }
+                }));
 
-                                // Helper to find event owner based on accountId from synced event
-                                const findOwnerId = (eventData: any): string[] => {
-                                    // First try: Match by accountId (most accurate)
-                                    if (eventData.accountId) {
-                                        const account = currentAccounts.find(acc => acc.accountId === eventData.accountId);
-                                        if (account?.linkedMemberId) {
-                                            return [account.linkedMemberId];
-                                        }
-                                        // Fallback: check member's connectedAccounts
-                                        const memberByAccountId = currentMembers.find(m =>
-                                            m.connectedAccounts?.some(acc => acc.accountId === eventData.accountId)
-                                        );
-                                        if (memberByAccountId) {
-                                            return [memberByAccountId.id];
-                                        }
-                                    }
+                if (isMounted) {
+                    // Merge with local events
+                    const stored = localStorage.getItem(STORAGE_KEY);
+                    const localEvents = stored ? JSON.parse(stored).map((e: any) => ({
+                        ...e,
+                        start: new Date(e.start),
+                        end: new Date(e.end),
+                        createdAt: new Date(e.createdAt),
+                        updatedAt: new Date(e.updatedAt),
+                    })).filter((e: CalendarEvent) =>
+                        // Filter out synced events AND any stale optimistic events for google calendars
+                        !e.id.startsWith('google-') &&
+                        !e.calendarId.startsWith('google-')
+                    ) : [];
 
-                                    // Second try: Match by calendar email if available
-                                    const owner = currentMembers.find(m =>
-                                        m.connectedAccounts?.some(acc =>
-                                            acc.provider === 'google' && acc.email === user.email
-                                        )
-                                    );
-                                    return owner ? [owner.id] : [];
-                                };
+                    dispatch({ type: 'SET_EVENTS', payload: [...localEvents, ...allGoogleEvents] });
+                }
 
-                                const googleEvents: CalendarEvent[] = (data.events || []).map((e: any) => ({
-                                    id: `google-${e.id}`,
-                                    title: e.title,
-                                    description: e.description || '',
-                                    start: new Date(e.start),
-                                    end: new Date(e.end),
-                                    isAllDay: e.isAllDay || false,
-                                    calendarId: 'google',
-                                    category: 'synced' as const,
-                                    color: e.calendarColor || '#4285F4',
-                                    recurrence: 'none' as const,
-                                    assignedTo: findOwnerId(e), // Map to member
-                                    location: e.location,
-                                    createdAt: new Date(),
-                                    updatedAt: new Date(),
-                                    mealType: undefined, // Explicitly undefined for synced events to match type
-                                }));
-
-                                // Get current localStorage events and merge
-                                const stored = localStorage.getItem(STORAGE_KEY);
-                                const localEvents = stored ? JSON.parse(stored).map((e: any) => ({
-                                    ...e,
-                                    start: new Date(e.start),
-                                    end: new Date(e.end),
-                                    createdAt: new Date(e.createdAt),
-                                    updatedAt: new Date(e.updatedAt),
-                                })) : [];
-
-                                // Filter out unknown props from local events if needed, but TypeScript handles it.
-                                // Filter out any existing google events from local state just in case
-                                const nonGoogleEvents = localEvents.filter((e: CalendarEvent) => !e.id.startsWith('google-'));
-                                const mergedEvents = [...nonGoogleEvents, ...googleEvents];
-
-                                dispatch({ type: 'SET_EVENTS', payload: mergedEvents });
-                                console.log('Loaded Google Calendar events:', googleEvents.length);
-                            }
-                        },
-                        (error) => {
-                            console.error('Error listening to cached events:', error);
-                        }
-                    );
-
-                    return () => unsubFirestore();
-                });
-
-                return () => unsubAuth();
             } catch (error) {
-                console.error('Failed to setup Firestore listener:', error);
+                console.error('Failed to fetch external events:', error);
             }
         };
 
-        setupFirestoreListener();
-    }, []); // Empty dependency array - using ref for fresh members
+        fetchExternalEvents();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [accounts, state.selectedDate, familyMembersRef]); // Re-fetch when accounts or date changes
 
     // Save events to localStorage on change
     useEffect(() => {
         if (!state.isLoading) {
-            // Only save non-Google events to localStorage
-            const localEvents = state.events.filter(e => !e.id.startsWith('google-'));
+            // Only save pure local events (not Google synced, not Google optimistic)
+            const localEvents = state.events.filter(e =>
+                !e.id.startsWith('google-') &&
+                !e.calendarId.startsWith('google-')
+            );
             localStorage.setItem(STORAGE_KEY, JSON.stringify(localEvents));
         }
     }, [state.events, state.isLoading]);
@@ -348,8 +334,6 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
     useEffect(() => {
         // Generate personal calendars for members
         const memberCalendars: Calendar[] = familyMembers.map((m: FamilyMember) => {
-            // Check if we already have a calendar for this member that might have custom settings?
-            // For now, simple regeneration or merge
             return {
                 id: `cal-${m.id}`,
                 name: m.name,
@@ -361,17 +345,23 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
             };
         });
 
-        // Merge with default family calendar and preserve visibility state if possible
-        // Ideally we wouldn't overwrite 'calendars' completely if we want to store visibility in 'calendars' array
-        // But 'visibleCalendarIds' handles visibility.
-        // So we just need to ensure we don't duplicate.
+        // Add connected external calendars from accounts
+        // Currently mapping 1:1 Account -> Primary Calendar
+        const externalCalendars: Calendar[] = accounts.map(acc => ({
+            id: `google-primary-${acc.accountId}`,
+            name: `${acc.displayName} (Google)`,
+            color: '#4285F4', // Default Google Blue
+            isVisible: true,
+            type: 'personal',
+            source: 'google',
+            ownerId: acc.linkedMemberId,
+            isFamilyShared: true // connected accounts are shared by default in this household model
+        }));
 
+        // For now merge defaults
         const familyCal = DEFAULT_CALENDARS.find(c => c.type === 'family')!;
-        const newCalendars = [familyCal, ...memberCalendars];
+        const newCalendars = [familyCal, ...memberCalendars, ...externalCalendars];
 
-        // We only dispatch if calendars have changed length or content to avoid loops, 
-        // but for now let's just dispatch. 
-        // OPTIMIZATION: Compare with current state.calendars
         const currentCalIds = state.calendars.map(c => c.id).sort().join(',');
         const newCalIds = newCalendars.map(c => c.id).sort().join(',');
 
@@ -379,9 +369,8 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
             dispatch({ type: 'SET_CALENDARS', payload: newCalendars });
         }
 
-    }, [familyMembers]);
+    }, [familyMembers, accounts]);
 
-    // Convenience action handlers
     const setView = useCallback((view: CalendarViewType) => {
         dispatch({ type: 'SET_VIEW', payload: view });
     }, []);
@@ -403,42 +392,164 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
     }, []);
 
     const addEvent = useCallback(async (event: Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>) => {
+        // Find which account this calendar belongs to
+        const targetCalendar = state.calendars.find(c => c.id === event.calendarId);
+        const isGoogle = targetCalendar?.source === 'google' || event.calendarId.startsWith('google-');
+
         // Optimistically add to local state
         const tempId = crypto.randomUUID();
+        const optimisticEvent = {
+            ...event,
+            id: tempId,
+            // Ensure color matches calendar if not set
+            color: event.color || targetCalendar?.color
+        };
+
         dispatch({
             type: 'ADD_EVENT',
-            payload: { ...event, id: tempId } as any // Type assertion needed here as reducer expects full event minus stamps
+            payload: optimisticEvent as any
         });
 
-        // If it's a Google Calendar event, try to create it in the backend
-        if (event.calendarId === 'google' || event.calendarId.startsWith('google-')) {
+        if (isGoogle) {
             try {
+                // Determine accountId
+                let accountId: string | undefined;
+                let actualCalendarId = 'primary'; // Default for simple adds
+
+                if (event.calendarId.startsWith('google-primary-')) {
+                    // Format: google-primary-{accountId}
+                    accountId = event.calendarId.replace('google-primary-', '');
+                } else {
+                    // Fallback using context mapping or passed props
+                    accountId = (event as any).accountId;
+                }
+
+                if (!accountId) {
+                    throw new Error('Could not determine account ID for Google Event');
+                }
+
                 // Dynamic import to avoid SSR/circular issues
                 const { createEvent } = await import('@/lib/googleCalendar');
-                const { id: googleId } = await createEvent(event as Partial<CalendarEvent>, event.calendarId === 'google' ? 'primary' : event.calendarId);
 
-                // Update the local event with the real Google ID
-                // Note: You might want a REPLACE_EVENT action or similar, 
-                // but for now the sync listener will eventually catch it.
-                console.log('Created Google Event:', googleId);
+                // Create with "primary" because we mapped the account's primary calendar
+                const { id: googleId } = await createEvent(
+                    event as Partial<CalendarEvent>,
+                    actualCalendarId,
+                    accountId
+                );
+
+                // Update the local event with the real Google ID + Account ID composite
+                const realId = `google-${accountId}-${googleId}`;
+
+                console.log('Created Google Event:', realId);
+
+                // Remove optimistic event
+                dispatch({ type: 'DELETE_EVENT', payload: tempId });
+
+                // Add the confirmed event (with correct ID)
+                dispatch({
+                    type: 'ADD_EVENT',
+                    payload: {
+                        ...event,
+                        id: realId,
+                        accountId, // Store account ID for future updates
+                        category: 'synced'
+                    } as any
+                });
+
             } catch (error) {
                 console.error('Failed to create Google event:', error);
-                // Optionally revert state here or show toast
+                // Rollback
+                dispatch({ type: 'DELETE_EVENT', payload: tempId });
+                alert('Failed to sync event to Google Calendar');
+            }
+        }
+    }, [state.calendars]);
+
+    const updateEvent = useCallback(async (event: CalendarEvent) => {
+        // Optimistic update
+        dispatch({ type: 'UPDATE_EVENT', payload: event });
+
+        if (event.id.startsWith('google-')) {
+            try {
+                // Parse composite ID: google-{accountId}-{googleId}
+                const parts = event.id.split('-');
+                let accountId, googleId;
+
+                if (parts.length >= 3) {
+                    // google-accountId-eventId
+                    // accountId might remove dashes? No, firestore IDs usually don't have dashes or we validly split
+                    // Limit split? 
+                    // Safe way: we stored accountId in the event object when satisfying listener!
+                    accountId = (event as any).accountId;
+                    googleId = parts.slice(2).join('-'); // Re-join rest if ID had dashes
+                } else {
+                    // Legacy or simple ID: google-eventId
+                    googleId = parts[1];
+                    // Try to find account?! 
+                    accountId = (event as any).accountId;
+                }
+
+                if (!accountId) {
+                    console.warn('Missing accountId for update, defaulting to primary? Unsafe.');
+                    // Attempt primary if single account? 
+                }
+
+                const { updateEvent } = await import('@/lib/googleCalendar');
+                await updateEvent(googleId, event, event.calendarId, accountId);
+            } catch (error) {
+                console.error('Failed to update Google event:', error);
+                // Rollback? Complicated without undo stack.
+                // Re-fetch?
             }
         }
     }, []);
 
-    const updateEvent = useCallback((event: CalendarEvent) => {
-        dispatch({ type: 'UPDATE_EVENT', payload: event });
-    }, []);
+    const deleteEvent = useCallback(async (eventId: string) => {
+        // Need to find the event first to check if google
+        const event = state.events.find(e => e.id === eventId);
+        if (!event) return;
 
-    const deleteEvent = useCallback((eventId: string) => {
+        // Optimistic delete
         dispatch({ type: 'DELETE_EVENT', payload: eventId });
-    }, []);
+
+        if (eventId.startsWith('google-')) {
+            try {
+                const parts = eventId.split('-');
+                let accountId, googleId;
+                // Use stored accountId if available on event object
+                accountId = (event as any).accountId;
+
+                if (parts.length >= 3 && accountId) {
+                    // If we have accountId, we can reliably deduce googleId by removing prefix
+                    // prefix is `google-${accountId}-`
+                    const prefix = `google-${accountId}-`;
+                    if (eventId.startsWith(prefix)) {
+                        googleId = eventId.substring(prefix.length);
+                    } else {
+                        googleId = parts.slice(2).join('-');
+                    }
+                } else {
+                    googleId = parts[1];
+                }
+
+                const { deleteEvent } = await import('@/lib/googleCalendar');
+                await deleteEvent(googleId, event.calendarId, accountId);
+            } catch (error) {
+                console.error('Failed to delete Google event:', error);
+                // Rollback
+                dispatch({ type: 'ADD_EVENT', payload: event as any });
+            }
+        }
+    }, [state.events]);
 
     const moveEvent = useCallback((eventId: string, newStart: Date, newEnd: Date) => {
-        dispatch({ type: 'MOVE_EVENT', payload: { eventId, newStart, newEnd } });
-    }, []);
+        // Find, update dates, call updateEvent
+        const event = state.events.find(e => e.id === eventId);
+        if (event) {
+            updateEvent({ ...event, start: newStart, end: newEnd });
+        }
+    }, [state.events, updateEvent]); // Use updateEvent dependency
 
     const openEventModal = useCallback((event?: CalendarEvent) => {
         dispatch({ type: 'OPEN_EVENT_MODAL', payload: event });
@@ -456,20 +567,10 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
         dispatch({ type: 'TOGGLE_MEMBER_FILTER', payload: memberId });
     }, []);
 
-    // Member management proxies (deprecated, use HouseholdContext directly)
-    // We keep them for now if interfaces demand it, or better, remove them from context type
-    // and let consumers switch to useHousehold()
-    // But since the interface defines them, we must provide implementations or change the interface.
-    // Changing the interface is cleaner.
-    // For this refactor, I will modify the Context Interface to remove them.
-
-    // Computed: filtered events based on visible calendars and selected members
     const filteredEvents = state.events.filter(event => {
-        // Filter by visible calendars
         if (!state.visibleCalendarIds.includes(event.calendarId)) {
             return false;
         }
-        // Filter by selected members (if any selected)
         if (state.selectedMemberIds.length > 0) {
             const hasMatchingMember = event.assignedTo.some(memberId =>
                 state.selectedMemberIds.includes(memberId)
@@ -495,7 +596,7 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
         closeEventModal,
         toggleCalendarVisibility,
         toggleMemberFilter,
-        familyMembers, // Pass through from HouseholdContext
+        familyMembers,
         filteredEvents,
     };
 

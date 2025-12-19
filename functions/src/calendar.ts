@@ -64,9 +64,53 @@ export const getCalendarList = onCall(async (request) => { /* Not strictly neede
 });
 
 export const getCalendarEvents = onCall(async (request) => {
-    // This is used for live fetching? If frontend uses cache, this might be legacy or for specific views.
-    // Ideally update to take accountId.
-    return { events: [] };
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be logged in.");
+    }
+
+    const { calendarId, timeMin, timeMax, accountId } = request.data;
+
+    if (!accountId) {
+        throw new HttpsError("invalid-argument", "Account ID is required.");
+    }
+
+    try {
+        const oauth2Client = await getAuthClient(request.auth.uid, accountId);
+        const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+        const response = await calendar.events.list({
+            calendarId: calendarId || "primary",
+            timeMin: timeMin || new Date().toISOString(),
+            timeMax: timeMax || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            singleEvents: true,
+            orderBy: "startTime",
+            maxResults: 250,
+        });
+
+        const events = response.data.items || [];
+
+        return {
+            events: events.map(evt => ({
+                id: evt.id,
+                title: evt.summary || "Untitled",
+                description: evt.description,
+                location: evt.location,
+                start: evt.start?.dateTime || evt.start?.date,
+                end: evt.end?.dateTime || evt.end?.date,
+                isAllDay: !evt.start?.dateTime,
+                calendarId: calendarId || "primary",
+                accountId: accountId,
+                status: evt.status,
+                calendarColor: '#4285F4' // We can't easily get color per event without calendar list, default is fine
+            }))
+        };
+    } catch (error: any) {
+        console.error("Error fetching events:", error);
+        // Return empty list instead of throwing to prevent blocking other accounts? 
+        // Or throw to let frontend handle?
+        // Let's throw helpful error
+        throw new HttpsError("internal", error.message || "Failed to fetch events");
+    }
 });
 
 /**

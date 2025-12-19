@@ -53,7 +53,7 @@ export async function fetchCalendarList(): Promise<any[]> {
 
     return calendars.map(cal => ({
         id: cal.id,
-        accountId: 'google-primary',
+        accountId: cal.accountId, // Ensure backend provides this
         name: cal.summary,
         color: cal.backgroundColor || '#4285F4',
         isVisible: true,
@@ -68,7 +68,8 @@ export async function fetchCalendarList(): Promise<any[]> {
 export async function fetchCalendarEvents(
     calendarId: string = 'primary',
     timeMin?: string,
-    timeMax?: string
+    timeMax?: string,
+    accountId?: string
 ): Promise<any[]> {
     if (!auth.currentUser) {
         throw new Error('User must be logged in');
@@ -77,7 +78,8 @@ export async function fetchCalendarEvents(
     const result = await getCalendarEventsFn({
         calendarId,
         timeMin,
-        timeMax
+        timeMax,
+        accountId
     });
 
     const { events } = result.data as { events: any[] };
@@ -101,7 +103,8 @@ export async function fetchCalendarEvents(
  */
 export async function createEvent(
     event: Partial<CalendarEvent>,
-    calendarId: string = 'primary'
+    calendarId: string = 'primary',
+    accountId?: string
 ): Promise<{ id: string }> {
     if (!auth.currentUser) {
         throw new Error('User must be logged in');
@@ -109,6 +112,7 @@ export async function createEvent(
 
     const result = await createCalendarEventFn({
         calendarId,
+        accountId, // Pass accountId to backend
         event: {
             title: event.title,
             description: event.description,
@@ -129,7 +133,8 @@ export async function createEvent(
 export async function updateEvent(
     eventId: string,
     updates: Partial<CalendarEvent>,
-    calendarId: string = 'primary'
+    calendarId: string = 'primary',
+    accountId?: string
 ): Promise<void> {
     if (!auth.currentUser) {
         throw new Error('User must be logged in');
@@ -138,6 +143,7 @@ export async function updateEvent(
     await updateCalendarEventFn({
         calendarId,
         eventId,
+        accountId, // Pass accountId to backend
         event: {
             title: updates.title,
             description: updates.description,
@@ -154,13 +160,14 @@ export async function updateEvent(
  */
 export async function deleteEvent(
     eventId: string,
-    calendarId: string = 'primary'
+    calendarId: string = 'primary',
+    accountId?: string
 ): Promise<void> {
     if (!auth.currentUser) {
         throw new Error('User must be logged in');
     }
 
-    await deleteCalendarEventFn({ calendarId, eventId });
+    await deleteCalendarEventFn({ calendarId, eventId, accountId });
 }
 
 /**

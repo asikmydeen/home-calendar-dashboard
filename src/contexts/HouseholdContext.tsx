@@ -33,7 +33,7 @@ const DEFAULT_MEMBERS: FamilyMember[] = [
 ];
 
 const initialState: HouseholdState = {
-    familyMembers: DEFAULT_MEMBERS,
+    familyMembers: [],
     currentUserMemberId: initialMemberId,
     isLoading: true,
     isSynced: false,
@@ -371,15 +371,15 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
                                         const initiatedTime = oauthInitiatedAt ? parseInt(oauthInitiatedAt, 10) : 0;
                                         const isNewAccount = updatedAt && (updatedAt.getTime() > initiatedTime);
 
-                                        console.log('[HouseholdContext] Account change detected:', {
-                                            type: change.type,
-                                            accountId: change.doc.id,
-                                            email: data.email,
-                                            pendingMemberId,
-                                            isNewAccount,
-                                            updatedAt: updatedAt?.toISOString(),
-                                            initiatedTime: initiatedTime ? new Date(initiatedTime).toISOString() : null
-                                        });
+                                        // console.log('[HouseholdContext] Account change detected:', {
+                                        //     type: change.type,
+                                        //     accountId: change.doc.id,
+                                        //     email: data.email,
+                                        //     pendingMemberId,
+                                        //     isNewAccount,
+                                        //     updatedAt: updatedAt?.toISOString(),
+                                        //     initiatedTime: initiatedTime ? new Date(initiatedTime).toISOString() : null
+                                        // });
 
                                         // Only link if we have a pending member AND the account was updated after OAuth started
                                         if (pendingMemberId && isNewAccount) {
