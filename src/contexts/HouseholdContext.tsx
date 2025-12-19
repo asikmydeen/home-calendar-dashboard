@@ -133,6 +133,9 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
     // Track when we're writing to Firestore to avoid snapshot overwrite race conditions
     const isWritePendingRef = React.useRef(false);
 
+    // Track Firestore listener to clean up on logout
+    const firestoreUnsubscribeRef = React.useRef<(() => void) | undefined>(undefined);
+
     // Load household data - first try Firestore, fallback to localStorage for migration
     useEffect(() => {
         let unsubscribe: (() => void) | undefined;
@@ -145,6 +148,12 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
 
                 unsubscribe = onAuthStateChanged(auth, async (user) => {
                     if (!user) {
+                        // Clean up Firestore listener when user logs out
+                        if (firestoreUnsubscribeRef.current) {
+                            firestoreUnsubscribeRef.current();
+                            firestoreUnsubscribeRef.current = undefined;
+                        }
+
                         // Not logged in - use localStorage or defaults
                         try {
                             const stored = localStorage.getItem(HOUSEHOLD_STORAGE_KEY);
@@ -229,8 +238,8 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
                         dispatch({ type: 'SET_LOADING', payload: false });
                     });
 
-                    // Store the Firestore unsubscribe for cleanup
-                    return () => firestoreUnsubscribe();
+                    // Store the Firestore unsubscribe for cleanup on logout
+                    firestoreUnsubscribeRef.current = firestoreUnsubscribe;
                 });
             } catch (e) {
                 console.error('Failed to setup household listener', e);
