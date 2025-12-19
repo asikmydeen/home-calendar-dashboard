@@ -13,6 +13,7 @@ interface HouseholdState {
 
 // Actions
 type HouseholdAction =
+    | { type: 'RESET_STATE' }
     | { type: 'SET_MEMBERS'; payload: FamilyMember[] }
     | { type: 'ADD_MEMBER'; payload: FamilyMember }
     | { type: 'UPDATE_MEMBER'; payload: FamilyMember }
@@ -45,6 +46,15 @@ const CURRENT_MEMBER_KEY = 'home-dashboard-current-member';
 // Reducer
 function householdReducer(state: HouseholdState, action: HouseholdAction): HouseholdState {
     switch (action.type) {
+        case 'RESET_STATE':
+            // Security: Clear all user data when logging out
+            return {
+                familyMembers: [],
+                currentUserMemberId: null,
+                isLoading: true,
+                isSynced: false,
+            };
+
         case 'SET_MEMBERS':
             return { ...state, familyMembers: action.payload };
 
@@ -147,28 +157,21 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
                 const { getFirestore, doc, onSnapshot, setDoc } = await import('firebase/firestore');
 
                 unsubscribe = onAuthStateChanged(auth, async (user) => {
-                    if (!user) {
-                        // Clean up Firestore listener when user logs out
-                        if (firestoreUnsubscribeRef.current) {
-                            firestoreUnsubscribeRef.current();
-                            firestoreUnsubscribeRef.current = undefined;
-                        }
+                    // SECURITY: Always clear previous user's data when auth state changes
+                    if (firestoreUnsubscribeRef.current) {
+                        firestoreUnsubscribeRef.current();
+                        firestoreUnsubscribeRef.current = undefined;
+                    }
 
-                        // Not logged in - use localStorage or defaults
-                        try {
-                            const stored = localStorage.getItem(HOUSEHOLD_STORAGE_KEY);
-                            if (stored) {
-                                const parsed = JSON.parse(stored);
-                                if (parsed && Array.isArray(parsed)) {
-                                    dispatch({ type: 'SET_MEMBERS', payload: parsed });
-                                }
-                            }
-                        } catch (e) {
-                            console.error('Failed to load household from localStorage', e);
-                        }
+                    if (!user) {
+                        // Logged out - reset state to empty (don't load from localStorage!)
+                        dispatch({ type: 'RESET_STATE' });
                         dispatch({ type: 'SET_LOADING', payload: false });
                         return;
                     }
+
+                    // New user logging in - reset state first, then load their data
+                    dispatch({ type: 'RESET_STATE' });
 
                     // User is logged in - use Firestore
                     const db = getFirestore();
