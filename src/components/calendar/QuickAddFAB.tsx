@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useCalendar } from '@/contexts/CalendarContext';
+import { useHousehold } from '@/contexts/HouseholdContext';
 import { Plus, X, Calendar, Clock, Zap } from 'lucide-react';
 import { format, addHours, setHours, setMinutes, startOfDay } from 'date-fns';
 
@@ -17,26 +18,35 @@ const QUICK_TEMPLATES = [
 
 export function QuickAddFAB() {
     const { openEventModal, addEvent, selectedDate } = useCalendar();
+    const { familyMembers } = useHousehold();
     const [isExpanded, setIsExpanded] = useState(false);
     const [quickTitle, setQuickTitle] = useState('');
-    const [selectedCalendarId, setSelectedCalendarId] = useState('family');
 
     const handleQuickAdd = () => {
         if (quickTitle.trim()) {
-            // Simple natural language parsing
             const now = new Date();
             const start = setMinutes(setHours(new Date(selectedDate), now.getHours() + 1), 0);
             const end = addHours(start, 1);
 
-            addEvent({
-                title: quickTitle.trim(),
-                start,
-                end,
-                isAllDay: false,
-                calendarId: selectedCalendarId,
-                category: 'general',
-                recurrence: 'none',
-                assignedTo: [],
+            // BROADCAST LOGIC: Default to everyone (Family)
+            familyMembers.forEach((member: any) => {
+                let targetCalId = `cal-${member.id}`;
+                const googleAccount = member.connectedAccounts?.find((acc: any) => acc.provider === 'google');
+
+                if (googleAccount && googleAccount.accountId) {
+                    targetCalId = `google-primary-${googleAccount.accountId}`;
+                }
+
+                addEvent({
+                    title: quickTitle.trim(),
+                    start,
+                    end,
+                    isAllDay: false,
+                    calendarId: targetCalId,
+                    category: 'general',
+                    recurrence: 'none',
+                    assignedTo: [member.id],
+                });
             });
 
             setQuickTitle('');
@@ -51,11 +61,11 @@ export function QuickAddFAB() {
 
         openEventModal({
             id: '',
-            title: '',
+            title: template.label,
             start,
             end,
             isAllDay: false,
-            calendarId: template.category === 'school' ? 'school' : selectedCalendarId,
+            calendarId: 'family',
             category: template.category,
             recurrence: 'none',
             assignedTo: [],
@@ -72,11 +82,11 @@ export function QuickAddFAB() {
 
         openEventModal({
             id: '',
-            title: '',
+            title: quickTitle, // Pass typed title if any
             start,
             end,
             isAllDay: false,
-            calendarId: selectedCalendarId,
+            calendarId: 'family',
             category: 'general',
             recurrence: 'none',
             assignedTo: [],
@@ -149,28 +159,9 @@ export function QuickAddFAB() {
                             Open Full Form
                         </button>
 
-                        {/* Calendar Selection */}
-                        <div className="mb-4 mt-4">
-                            <div className="text-xs text-zinc-500 mb-2 flex items-center gap-1">
-                                <Calendar className="w-3 h-3" />
-                                Add to Calendar
-                            </div>
-                            <select
-                                value={selectedCalendarId}
-                                onChange={(e) => setSelectedCalendarId(e.target.value)}
-                                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-purple-500 appearance-none"
-                            >
-                                <option value="family">Family</option>
-                                <option value="work">Work</option>
-                                <option value="school">School</option>
-                                <option value="personal">Personal</option>
-                                <option value="google">Google Calendar</option>
-                            </select>
-                        </div>
-
                         {/* Date indicator */}
                         <div className="mt-3 text-center text-xs text-zinc-500">
-                            Adding to {format(selectedDate, 'EEEE, MMM d')}
+                            Adding to Family Calendar • {format(selectedDate, 'EEEE, MMM d')}
                         </div>
                     </div>
                 )}

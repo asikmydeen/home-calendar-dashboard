@@ -157,26 +157,91 @@ export function EventModal() {
         const start = new Date(`${startDate}T${isAllDay ? '00:00' : startTime}`);
         const end = new Date(`${endDate}T${isAllDay ? '23:59' : endTime}`);
 
-        const eventData = {
-            title: title.trim(),
-            description: description.trim() || undefined,
-            location: location.trim() || undefined,
-            start,
-            end,
-            isAllDay,
-            calendarId,
-            category,
-            recurrence,
-            assignedTo,
-        };
+        // INTELLIGENT ROUTING & BROADCAST LOGIC
+
+        // Define target members for the event
+        const targetMemberIds = assignedTo.length > 0
+            ? assignedTo
+            : familyMembers.map(m => m.id); // Default to everyone if no one selected (Family mode)
 
         if (isEditing && editingEvent) {
+            // CAUTION: Editing a broadcasted event is complex.
+            // For now, if we are editing, we just update the CURRENT event's ID.
+            // We do NOT re-broadcast to avoid duplicating updates or creating zombie copies.
+            // The user can delete and recreate if they want to re-broadcast.
+
+            // However, if the user CHANGED the assignment during edit...
+            // This is a known limitation. We'll stick to updating the single event instance.
             updateEvent({
                 ...editingEvent,
-                ...eventData,
+                title: title.trim(),
+                description: description.trim() || undefined,
+                location: location.trim() || undefined,
+                start,
+                end,
+                isAllDay,
+                calendarId, // Keep existing calendar ID when editing
+                category,
+                recurrence,
+                assignedTo,
             });
         } else {
-            addEvent(eventData);
+            // NEW EVENT CREATION - Broadcast Mode
+
+            // 1. If strictly creating for ONE person, do standard logic
+            if (targetMemberIds.length === 1 && assignedTo.length === 1) {
+                const memberId = targetMemberIds[0];
+                const member = familyMembers.find(m => m.id === memberId);
+                let targetCalId = 'family';
+
+                if (member) {
+                    const googleAccount = member.connectedAccounts?.find(acc => acc.provider === 'google');
+                    targetCalId = (googleAccount && googleAccount.accountId)
+                        ? `google-primary-${googleAccount.accountId}`
+                        : `cal-${memberId}`;
+                }
+
+                addEvent({
+                    title: title.trim(),
+                    description: description.trim() || undefined,
+                    location: location.trim() || undefined,
+                    start,
+                    end,
+                    isAllDay,
+                    calendarId: targetCalId,
+                    category,
+                    recurrence,
+                    assignedTo: [memberId],
+                });
+            } else {
+                // 2. Broadcast Mode: Create separate event for EACH target member
+                // This satisfies "created in everyone's calendar"
+
+                targetMemberIds.forEach(memberId => {
+                    const member = familyMembers.find(m => m.id === memberId);
+                    if (!member) return;
+
+                    let targetCalId = `cal-${memberId}`; // Default to local personal
+                    const googleAccount = member.connectedAccounts?.find(acc => acc.provider === 'google');
+
+                    if (googleAccount && googleAccount.accountId) {
+                        targetCalId = `google-primary-${googleAccount.accountId}`;
+                    }
+
+                    addEvent({
+                        title: title.trim(),
+                        description: description.trim() || undefined,
+                        location: location.trim() || undefined,
+                        start,
+                        end,
+                        isAllDay,
+                        calendarId: targetCalId,
+                        category,
+                        recurrence,
+                        assignedTo: [memberId], // Assign to specific individual
+                    });
+                });
+            }
         }
 
         closeEventModal();
@@ -190,11 +255,24 @@ export function EventModal() {
     };
 
     const toggleMember = (memberId: string) => {
-        setAssignedTo(prev =>
-            prev.includes(memberId)
+        setAssignedTo(prev => {
+            const newSelection = prev.includes(memberId)
                 ? prev.filter(id => id !== memberId)
-                : [...prev, memberId]
-        );
+                : [...prev, memberId];
+            return newSelection;
+        });
+    };
+
+    // Helper to get target calendar name for feedback
+    const getTargetCalendarName = () => {
+        if (assignedTo.length === 0) return 'Family Calendar';
+        if (assignedTo.length > 1) return 'Family Calendar';
+        const member = familyMembers.find(m => m.id === assignedTo[0]);
+        if (!member) return 'Family Calendar';
+
+        const googleAccount = member.connectedAccounts?.find(acc => acc.provider === 'google');
+        if (googleAccount) return `${member.name}'s Google Calendar`;
+        return `${member.name}'s Calendar`;
     };
 
     return (
@@ -243,8 +321,48 @@ export function EventModal() {
                         )}
                     </div>
 
+                    {/* Assign to Family Members (MOVED UP) */}
+                    <div>
+                        <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
+                            <Users className="w-4 h-4" />
+                            <span>Assign to</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {familyMembers.map(member => (
+                                <button
+                                    key={member.id}
+                                    onClick={() => toggleMember(member.id)}
+                                    className={`
+                                        px-3 py-1.5 rounded-full text-sm flex items-center gap-2 transition-all border
+                                        ${assignedTo.includes(member.id)
+                                            ? 'bg-zinc-800 border-zinc-600'
+                                            : 'border-zinc-800 bg-transparent hover:bg-zinc-800'
+                                        }
+                                    `}
+                                    style={{
+                                        // Use member color only when selected
+                                        boxShadow: assignedTo.includes(member.id) ? `0 0 10px -2px ${member.color}80` : 'none',
+                                        borderColor: assignedTo.includes(member.id) ? member.color : undefined
+                                    }}
+                                >
+                                    <span className="text-base">{member.avatar}</span>
+                                    <span className={assignedTo.includes(member.id) ? 'text-white' : 'text-zinc-400'}>
+                                        {member.name}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                        {/* Dynamic Feedback */}
+                        {!isEditing && (
+                            <p className="text-xs text-zinc-500 mt-2 flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                Saving to: <span className="text-zinc-300">{getTargetCalendarName()}</span>
+                            </p>
+                        )}
+                    </div>
+
                     {/* Date & Time */}
-                    <div className="space-y-3">
+                    <div className="space-y-3 pt-2 border-t border-zinc-800">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 text-zinc-400 text-sm">
                                 <Clock className="w-4 h-4" />
@@ -308,59 +426,7 @@ export function EventModal() {
                         )}
                     </div>
 
-                    {/* Location */}
-                    <div>
-                        <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
-                            <MapPin className="w-4 h-4" />
-                            <span>Location</span>
-                        </div>
-                        <input
-                            type="text"
-                            value={location}
-                            onChange={(e) => setLocation(e.target.value)}
-                            placeholder="Add location"
-                            className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-600 text-sm"
-                        />
-                    </div>
-
-                    {/* Calendar Selection */}
-                    <div>
-                        <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
-                            <Calendar className="w-4 h-4" />
-                            <span>Calendar</span>
-                            {isEditing && <span className="text-xs text-zinc-600">(Cannot be changed)</span>}
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            {calendars.map(cal => (
-                                <button
-                                    key={cal.id}
-                                    onClick={() => !isEditing && setCalendarId(cal.id)}
-                                    disabled={isEditing}
-                                    className={`
-                                        px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 transition-all border
-                                        ${calendarId === cal.id
-                                            ? 'border-transparent bg-zinc-800'
-                                            : 'border-zinc-800 bg-transparent hover:bg-zinc-800'
-                                        }
-                                        ${isEditing ? 'opacity-50 cursor-not-allowed' : ''}
-                                    `}
-                                    style={{
-                                        color: cal.color,
-                                        borderColor: calendarId === cal.id ? cal.color : undefined,
-                                        backgroundColor: calendarId === cal.id ? `${cal.color}20` : undefined
-                                    }}
-                                >
-                                    <div
-                                        className="w-2 h-2 rounded-full"
-                                        style={{ backgroundColor: cal.color }}
-                                    />
-                                    {cal.name}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Category */}
+                    {/* Category (Renamed from Calendar/Category logic) */}
                     <div>
                         <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
                             <Tag className="w-4 h-4" />
@@ -374,10 +440,13 @@ export function EventModal() {
                                     className={`
                                         px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 transition-all
                                         ${category === cat.id
-                                            ? 'bg-purple-600 text-white'
+                                            ? 'text-white shadow-lg scale-105'
                                             : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
                                         }
                                     `}
+                                    style={{
+                                        backgroundColor: category === cat.id ? CATEGORY_COLORS[cat.id] : undefined
+                                    }}
                                 >
                                     <span>{CATEGORY_ICONS[cat.id]}</span>
                                     {cat.label}
@@ -386,51 +455,38 @@ export function EventModal() {
                         </div>
                     </div>
 
-                    {/* Recurrence */}
-                    <div>
-                        <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
-                            <Repeat className="w-4 h-4" />
-                            <span>Repeat</span>
+                    {/* Location & Recurrence Row */}
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Location */}
+                        <div>
+                            <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
+                                <MapPin className="w-4 h-4" />
+                                <span>Location</span>
+                            </div>
+                            <input
+                                type="text"
+                                value={location}
+                                onChange={(e) => setLocation(e.target.value)}
+                                placeholder="Add location"
+                                className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-600 text-sm"
+                            />
                         </div>
-                        <select
-                            value={recurrence}
-                            onChange={(e) => setRecurrence(e.target.value as RecurrencePattern)}
-                            className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm"
-                        >
-                            {RECURRENCE_OPTIONS.map(opt => (
-                                <option key={opt.id} value={opt.id}>{opt.label}</option>
-                            ))}
-                        </select>
-                    </div>
 
-                    {/* Assign to Family Members */}
-                    <div>
-                        <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
-                            <Users className="w-4 h-4" />
-                            <span>Assign to</span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            {familyMembers.map(member => (
-                                <button
-                                    key={member.id}
-                                    onClick={() => toggleMember(member.id)}
-                                    className={`
-                                        px-3 py-1.5 rounded-full text-sm flex items-center gap-2 transition-all border
-                                        ${assignedTo.includes(member.id)
-                                            ? 'bg-zinc-800'
-                                            : 'border-zinc-800 bg-transparent hover:bg-zinc-800'
-                                        }
-                                    `}
-                                    style={{
-                                        color: member.color,
-                                        borderColor: assignedTo.includes(member.id) ? member.color : undefined,
-                                        backgroundColor: assignedTo.includes(member.id) ? `${member.color}20` : undefined
-                                    }}
-                                >
-                                    <span className="text-base">{member.avatar}</span>
-                                    {member.name}
-                                </button>
-                            ))}
+                        {/* Recurrence */}
+                        <div>
+                            <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
+                                <Repeat className="w-4 h-4" />
+                                <span>Repeat</span>
+                            </div>
+                            <select
+                                value={recurrence}
+                                onChange={(e) => setRecurrence(e.target.value as RecurrencePattern)}
+                                className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm"
+                            >
+                                {RECURRENCE_OPTIONS.map(opt => (
+                                    <option key={opt.id} value={opt.id}>{opt.label}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
 
@@ -469,7 +525,6 @@ export function EventModal() {
                         </button>
                         <button
                             onClick={handleSave}
-                            // Removed disabled={!title.trim()} to allow validation feedback
                             className="flex items-center gap-2 px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
                         >
                             <Save className="w-4 h-4" />

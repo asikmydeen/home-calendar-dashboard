@@ -172,11 +172,6 @@ export const DEFAULT_CALENDARS: Calendar[] = [
         source: 'local',
         isFamilyShared: true
     },
-    // Personal calendars will be generated per user, but keeping these for initial generic structure if needed
-    // or we can remove them and rely on the new logic. 
-    // For now, let's update them to match the type but keep them generic till logic is in place.
-    { id: 'work', name: 'Work', color: '#3b82f6', isVisible: true, type: 'work', source: 'local' },
-    { id: 'school', name: 'School', color: '#f59e0b', isVisible: true, type: 'personal', source: 'local' }, // Assuming 'school' is a personal type for now
 ];
 
 // Default family members for demo
