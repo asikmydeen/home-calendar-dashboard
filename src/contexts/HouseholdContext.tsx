@@ -164,8 +164,15 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
                     }
 
                     if (!user) {
-                        // Logged out - reset state to empty (don't load from localStorage!)
+                        // Logged out - reset state to empty and clear localStorage
                         dispatch({ type: 'RESET_STATE' });
+
+                        // SECURITY: Clear localStorage to prevent data leakage to next user
+                        localStorage.removeItem(HOUSEHOLD_STORAGE_KEY);
+                        localStorage.removeItem(CURRENT_MEMBER_KEY);
+                        localStorage.removeItem('pending_google_auth_member_id');
+                        localStorage.removeItem('pending_google_auth_initiated_at');
+
                         dispatch({ type: 'SET_LOADING', payload: false });
                         return;
                     }
@@ -222,10 +229,11 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
                                         console.log('Migrated household data from localStorage to Firestore');
                                     }
                                 } else {
-                                    // No localStorage data - save defaults to Firestore
+                                    // No localStorage data - start with empty household for new users
+                                    // Don't use DEFAULT_MEMBERS - let user add their own members
                                     await setDoc(householdRef, {
-                                        members: DEFAULT_MEMBERS,
-                                        currentMemberId: initialMemberId,
+                                        members: [],
+                                        currentMemberId: null,
                                         createdAt: new Date().toISOString(),
                                         updatedAt: new Date().toISOString(),
                                     });
