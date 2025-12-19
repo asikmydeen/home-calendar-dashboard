@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { CalendarProvider } from "@/contexts/CalendarContext";
+import { HouseholdProvider } from "@/contexts/HouseholdContext";
+import { AccountsProvider } from "@/contexts/AccountsContext";
 
 export const dynamic = 'force-dynamic';
 
@@ -21,9 +24,16 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
-          {children}
+          <HouseholdProvider>
+            <AccountsProvider>
+              <CalendarProvider>
+                {children}
+              </CalendarProvider>
+            </AccountsProvider>
+          </HouseholdProvider>
         </AuthProvider>
       </body>
     </html>
   );
 }
+

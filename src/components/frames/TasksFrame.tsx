@@ -10,15 +10,9 @@ interface Task {
   completed: boolean;
 }
 
-// Mock tasks
-const INITIAL_TASKS: Task[] = [
-  { id: '1', text: 'Buy milk', completed: false },
-  { id: '2', text: 'Walk the dog', completed: true },
-  { id: '3', text: 'Pay bills', completed: false },
-];
-
 export default function TasksFrame() {
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
+  // Start with empty tasks - no demo data
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [newTask, setNewTask] = useState('');
   const { taskComplete } = useConfetti();
 

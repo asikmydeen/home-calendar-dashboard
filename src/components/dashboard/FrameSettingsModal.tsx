@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Frame, FrameType } from '@/types/dashboard';
 import { X, Save } from 'lucide-react';
+import { CalendarModuleSettings } from './CalendarModuleSettings';
 
 interface FrameSettingsModalProps {
     frame: Frame | null;
@@ -14,6 +16,11 @@ interface FrameSettingsModalProps {
 export default function FrameSettingsModal({ frame, isOpen, onClose, onSave }: FrameSettingsModalProps) {
     const [title, setTitle] = useState('');
     const [config, setConfig] = useState<Record<string, any>>({});
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
         if (frame) {
@@ -22,7 +29,7 @@ export default function FrameSettingsModal({ frame, isOpen, onClose, onSave }: F
         }
     }, [frame]);
 
-    if (!isOpen || !frame) return null;
+    if (!isOpen || !frame || !mounted) return null;
 
     const handleSave = () => {
         onSave({
@@ -113,31 +120,7 @@ export default function FrameSettingsModal({ frame, isOpen, onClose, onSave }: F
                 );
 
             case 'calendar':
-                return (
-                    <div className="space-y-3">
-                        <label className="block">
-                            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Google Calendar ID</span>
-                            <input
-                                type="text"
-                                value={config.calendarId || ''}
-                                onChange={(e) => setConfig({ ...config, calendarId: e.target.value })}
-                                placeholder="primary or email@gmail.com"
-                                className="mt-1 block w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                        </label>
-                        <label className="block">
-                            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Days to Show</span>
-                            <input
-                                type="number"
-                                min="1"
-                                max="30"
-                                value={config.daysToShow || 7}
-                                onChange={(e) => setConfig({ ...config, daysToShow: parseInt(e.target.value) })}
-                                className="mt-1 block w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                        </label>
-                    </div>
-                );
+                return <CalendarModuleSettings config={config} setConfig={setConfig} />;
 
             case 'clock':
                 const clockStyles = [
@@ -312,8 +295,8 @@ export default function FrameSettingsModal({ frame, isOpen, onClose, onSave }: F
         }
     };
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+    const modalContent = (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center" style={{ pointerEvents: 'auto' }}>
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -321,7 +304,7 @@ export default function FrameSettingsModal({ frame, isOpen, onClose, onSave }: F
             />
 
             {/* Modal */}
-            <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden max-h-[90vh] overflow-y-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-700">
                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
@@ -375,4 +358,6 @@ export default function FrameSettingsModal({ frame, isOpen, onClose, onSave }: F
             </div>
         </div>
     );
+
+    return createPortal(modalContent, document.body);
 }

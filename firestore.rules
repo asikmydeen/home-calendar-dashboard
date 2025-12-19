@@ -41,10 +41,24 @@ service cloud.firestore {
       allow read, update, delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
     }
     
-    // Integrations (tokens)
-    match /integrations/{integrationId} {
-       allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
-       allow read, update, delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+    // Integrations (OAuth tokens) - document ID is the user's UID
+    match /integrations/{userId} {
+       allow read, write: if isOwner(userId);
+       
+       // Allow access to accounts subcollection
+       match /accounts/{accountId} {
+         allow read, write: if isOwner(userId);
+       }
+    }
+    
+    // Cached calendar events - document ID is the user's UID
+    match /cachedEvents/{userId} {
+       allow read, write: if isOwner(userId);
+    }
+    
+    // Households - document ID is the user's UID
+    match /households/{userId} {
+       allow read, write: if isOwner(userId);
     }
   }
 }

@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { DashboardTheme, DashboardLayout, DEFAULT_THEME, OverlayEffect } from '@/types/dashboard';
-import { X, Palette, Type, Sparkles, Image } from 'lucide-react';
+import { X, Palette, Type, Sparkles, Image, Users } from 'lucide-react';
+import { HouseholdSettings } from './HouseholdSettings';
 
 const OVERLAY_OPTIONS: { id: OverlayEffect; label: string; emoji: string }[] = [
     { id: 'none', label: 'None', emoji: '🚫' },
@@ -49,7 +50,7 @@ const WIDGET_STYLES = [
 
 export default function DashboardSettings({ dashboard, isOpen, onClose, onSave }: DashboardSettingsProps) {
     const [theme, setTheme] = useState<DashboardTheme>(dashboard.theme || DEFAULT_THEME);
-    const [activeTab, setActiveTab] = useState<'background' | 'font' | 'widgets'>('background');
+    const [activeTab, setActiveTab] = useState<'background' | 'font' | 'widgets' | 'household'>('background');
     const [customImageUrl, setCustomImageUrl] = useState('');
 
     if (!isOpen) return null;
@@ -74,6 +75,7 @@ export default function DashboardSettings({ dashboard, isOpen, onClose, onSave }
         { id: 'background', label: 'Background', icon: Image },
         { id: 'font', label: 'Typography', icon: Type },
         { id: 'widgets', label: 'Widgets', icon: Sparkles },
+        { id: 'household', label: 'Household', icon: Users },
     ] as const;
 
     return (
@@ -256,6 +258,13 @@ export default function DashboardSettings({ dashboard, isOpen, onClose, onSave }
                             </div>
                         </div>
                     )}
+
+
+                    {activeTab === 'household' && (
+                        <div className="space-y-6">
+                            <HouseholdSettings />
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer */}
@@ -274,6 +283,7 @@ export default function DashboardSettings({ dashboard, isOpen, onClose, onSave }
                     </button>
                 </div>
             </div>
+
         </div>
     );
 }

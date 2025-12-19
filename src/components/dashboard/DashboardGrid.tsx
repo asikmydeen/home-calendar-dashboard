@@ -110,7 +110,7 @@ export default function DashboardGrid({
 
   return (
     <ResponsiveGridLayout
-      className={`layout min-h-screen pb-24 ${isEditMode ? 'edit-mode-grid' : ''}`}
+      className={`layout h-full ${isEditMode ? 'edit-mode-grid' : ''}`}
       layouts={{ lg: frames.map(f => ({ i: f.id, x: f.x, y: f.y, w: f.w, h: f.h, minW: f.minW || 2, minH: f.minH || 2 })) }}
       breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
       cols={cols}
@@ -121,6 +121,9 @@ export default function DashboardGrid({
       resizeHandles={['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']}
       draggableHandle=".draggable-handle"
       margin={[16, 16]}
+      containerPadding={[0, 0]}
+      compactType={null}
+      preventCollision={true}
     >
       {frames.map((frame) => (
         <FrameWrapper

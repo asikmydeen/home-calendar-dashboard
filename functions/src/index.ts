@@ -4,11 +4,12 @@ import * as admin from "firebase-admin";
 
 admin.initializeApp();
 
-// Export other files
+// Export all modules
 export * from "./oauth";
+export * from "./calendar";
 
-// Example function
+// Health check function
 export const helloWorld = onCall((request) => {
-  logger.info("Hello logs!", {structuredData: true});
+  logger.info("Hello logs!", { structuredData: true });
   return { message: "Hello from Firebase!" };
 });

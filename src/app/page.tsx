@@ -25,9 +25,7 @@ const FONT_CLASSES: Record<string, string> = {
 };
 
 export default function Home() {
-  const user = { uid: 'test' };
-  const authLoading = false;
-  const logout = () => { };
+  const { user, loading: authLoading, logout } = useAuth();
 
   const {
     dashboard,
@@ -104,6 +102,39 @@ export default function Home() {
 
       {/* Top Bar */}
       <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        {/* User Profile - Always visible */}
+        <div className="relative group">
+          <button
+            className="flex items-center gap-2 px-3 py-2 bg-white/10 backdrop-blur-md hover:bg-white/20 text-white rounded-full shadow-lg transition-all border border-white/20"
+          >
+            {user?.photoURL ? (
+              <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full" />
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-xs font-medium">
+                {user?.email?.[0]?.toUpperCase() || '?'}
+              </div>
+            )}
+            <span className="hidden md:inline text-sm max-w-[120px] truncate">
+              {user?.displayName || user?.email?.split('@')[0] || 'User'}
+            </span>
+          </button>
+
+          {/* Dropdown */}
+          <div className="absolute right-0 top-full mt-2 w-56 bg-zinc-900/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+            <div className="px-3 py-2 border-b border-white/10 mb-2">
+              <p className="text-sm font-medium text-white truncate">{user?.displayName || 'User'}</p>
+              <p className="text-xs text-zinc-400 truncate">{user?.email}</p>
+            </div>
+            <button
+              onClick={logout}
+              className="w-full flex items-center gap-2 px-3 py-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors text-sm"
+            >
+              <LogOut className="w-4 h-4" />
+              Sign out
+            </button>
+          </div>
+        </div>
+
         {isEditMode && (
           <>
             {/* Pages Button */}
@@ -182,15 +213,6 @@ export default function Home() {
             </>
           )}
         </button>
-
-        {isEditMode && (
-          <button
-            onClick={logout}
-            className="flex items-center gap-2 px-3 py-2 bg-red-500/20 backdrop-blur-md text-red-300 hover:bg-red-500/30 rounded-full shadow-lg transition-colors border border-red-500/30"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-        )}
       </div>
 
       {/* Page Carousel */}
@@ -200,31 +222,33 @@ export default function Home() {
         onPageChange={goToPage}
       >
         {(page: DashboardPage, index: number) => (
-          <div className="h-full w-full p-4 md:p-8 overflow-y-auto">
+          <div className="h-full w-full p-4 md:p-6 overflow-hidden flex flex-col">
             {/* Page Title */}
-            <h1 className="text-3xl font-light mb-6 text-white/50 select-none drop-shadow-lg">
+            <h1 className="text-2xl font-light mb-4 text-white/50 select-none drop-shadow-lg shrink-0">
               {page.name}
             </h1>
 
-            {/* Widgets or Empty State */}
-            {page.frames.length > 0 ? (
-              <DashboardGrid
-                frames={page.frames}
-                isEditMode={isEditMode}
-                onLayoutChange={updateFrames}
-                onRemoveFrame={removeFrame}
-                onEditFrame={handleEditFrame}
-                widgetStyle={theme.widgetStyle}
-              />
-            ) : (
-              <div className="empty-page-placeholder">
-                <div className="text-6xl mb-4">✨</div>
-                <p className="text-xl">Empty page</p>
-                <p className="text-sm mt-2 opacity-60">
-                  {isEditMode ? 'Click "Add Widget" to add content' : 'Enter edit mode to add widgets'}
-                </p>
-              </div>
-            )}
+            {/* Widgets or Empty State - fill remaining space */}
+            <div className="flex-1 min-h-0">
+              {page.frames.length > 0 ? (
+                <DashboardGrid
+                  frames={page.frames}
+                  isEditMode={isEditMode}
+                  onLayoutChange={updateFrames}
+                  onRemoveFrame={removeFrame}
+                  onEditFrame={handleEditFrame}
+                  widgetStyle={theme.widgetStyle}
+                />
+              ) : (
+                <div className="empty-page-placeholder">
+                  <div className="text-6xl mb-4">✨</div>
+                  <p className="text-xl">Empty page</p>
+                  <p className="text-sm mt-2 opacity-60">
+                    {isEditMode ? 'Click "Add Widget" to add content' : 'Enter edit mode to add widgets'}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </PageCarousel>
