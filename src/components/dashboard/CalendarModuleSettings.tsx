@@ -481,9 +481,9 @@ export function CalendarModuleSettings({ config, setConfig }: CalendarModuleSett
                         {calendars.length === 0 ? (
                             <p className="text-sm text-zinc-500 text-center py-2">No calendars available</p>
                         ) : (
-                            calendars.map(calendar => (
+                            calendars.map((calendar, idx) => (
                                 <div
-                                    key={calendar.id}
+                                    key={`${calendar.id}-${idx}`}
                                     className={`flex items-center gap-3 p-2 rounded-lg transition-all ${calendar.isVisible ? 'bg-zinc-50 dark:bg-zinc-800/50' : 'bg-zinc-50/50 dark:bg-zinc-800/20 opacity-60'
                                         }`}
                                 >
