@@ -52,9 +52,9 @@ export function MonthView() {
             </div>
 
             {/* Calendar grid */}
-            <div className="flex-1 grid grid-rows-6 overflow-hidden">
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                 {weeks.map((week, weekIndex) => (
-                    <div key={weekIndex} className="grid grid-cols-7 border-b border-zinc-800/50">
+                    <div key={weekIndex} className="flex-1 min-h-0 grid grid-cols-7 border-b border-zinc-800/50">
                         {week.map(day => {
                             const isCurrentMonth = isSameMonth(day, selectedDate);
                             const isTodayDate = isToday(day);
@@ -67,14 +67,14 @@ export function MonthView() {
                                     key={day.toISOString()}
                                     onClick={() => handleDayClick(day)}
                                     className={`
-                    min-h-[100px] p-1 border-r border-zinc-800/50 last:border-r-0 cursor-pointer
-                    transition-colors hover:bg-zinc-800/30
+                    flex-1 min-h-0 p-1 border-r border-zinc-800/50 last:border-r-0 cursor-pointer
+                    transition-colors hover:bg-zinc-800/30 overflow-hidden flex flex-col
                     ${!isCurrentMonth ? 'bg-zinc-900/50' : ''}
                   `}
                                 >
                                     {/* Day number */}
                                     <div className={`
-                    w-7 h-7 mb-1 flex items-center justify-center rounded-full text-sm font-medium
+                    w-6 h-6 flex-shrink-0 flex items-center justify-center rounded-full text-xs font-medium
                     ${isTodayDate
                                             ? 'bg-purple-600 text-white'
                                             : isCurrentMonth
@@ -86,7 +86,7 @@ export function MonthView() {
                                     </div>
 
                                     {/* Events */}
-                                    <div className="space-y-0.5 overflow-hidden">
+                                    <div className="flex-1 min-h-0 space-y-0.5 overflow-hidden">
                                         {dayEvents.slice(0, maxVisibleEvents).map(event => (
                                             <EventCard
                                                 key={event.id}

@@ -86,7 +86,8 @@ export const FrameWrapper = React.forwardRef<HTMLDivElement, FrameWrapperProps>(
         <div className="flex-1 min-h-0 overflow-hidden relative rounded-b-2xl">
           {children}
           {/* Overlay in edit mode to prevent interaction with iframe/inputs while dragging */}
-          {isEditMode && <div className="absolute inset-0 bg-transparent z-10" />}
+          {/* z-[5] is lower than resize handles (z-100) so resizing still works */}
+          {isEditMode && <div className="absolute inset-0 bg-transparent z-[5]" />}
         </div>
       </div>
     );

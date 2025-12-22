@@ -32,19 +32,30 @@ body {
   overflow: visible !important;
 }
 
+/* Ensure grid layout container doesn't create scrolling */
+.react-grid-layout {
+  overflow: visible !important;
+  position: relative;
+}
+
 /* Base resize handle styling - HIDDEN by default */
 .react-resizable-handle {
   position: absolute;
-  z-index: 50;
+  z-index: 100;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
 }
 
-/* Only show handles when grid is in edit mode AND on hover */
-.edit-mode-grid .react-grid-item:hover .react-resizable-handle {
+/* Always show handles when grid is in edit mode */
+.edit-mode-grid .react-resizable-handle {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* Highlight handles on hover for better UX */
+.edit-mode-grid .react-grid-item:hover .react-resizable-handle {
+  opacity: 1;
 }
 
 /* Corner handles */
@@ -230,4 +241,40 @@ body {
   justify-content: center;
   min-height: 50vh;
   color: rgba(255, 255, 255, 0.3);
+}
+
+/* Boundary warning indicator when dragging near edge */
+.edit-mode-grid .react-grid-item.boundary-warning {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.5) !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+}
+
+/* Smooth boundary enforcement animation */
+.react-grid-item {
+  transition: transform 0.1s ease-out;
+}
+
+/* ===== Canvas Container Styles ===== */
+
+/* Canvas wrapper - centers and contains the scaled canvas */
+.canvas-wrapper {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Fixed-size canvas that scales */
+.canvas-container {
+  position: relative;
+  /* Size is set inline via style prop */
+  transition: transform 0.2s ease-out;
+  will-change: transform;
+}
+
+/* Improve rendering quality during scaling */
+.canvas-container * {
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

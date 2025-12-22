@@ -1,0 +1,132 @@
+[debug] [2025-12-22T04:27:09.701Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-12-22T04:27:09.702Z] > authorizing via signed-in user (itsmeasik@gmail.com)
+[debug] [2025-12-22T04:27:09.702Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-12-22T04:27:09.702Z] > authorizing via signed-in user (itsmeasik@gmail.com)
+[debug] [2025-12-22T04:27:09.702Z] Checked if tokens are valid: false, expires at: 1766188792950
+[debug] [2025-12-22T04:27:09.702Z] Checked if tokens are valid: false, expires at: 1766188792950
+[debug] [2025-12-22T04:27:09.702Z] > refreshing access token with scopes: []
+[debug] [2025-12-22T04:27:09.703Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-12-22T04:27:09.703Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-22T04:27:09.703Z] Checked if tokens are valid: false, expires at: 1766188792950
+[debug] [2025-12-22T04:27:09.703Z] Checked if tokens are valid: false, expires at: 1766188792950
+[debug] [2025-12-22T04:27:09.703Z] > refreshing access token with scopes: []
+[debug] [2025-12-22T04:27:09.704Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-12-22T04:27:09.704Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-22T04:27:09.704Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-12-22T04:27:09.704Z] > authorizing via signed-in user (itsmeasik@gmail.com)
+[debug] [2025-12-22T04:27:09.704Z] Checked if tokens are valid: false, expires at: 1766188792950
+[debug] [2025-12-22T04:27:09.704Z] Checked if tokens are valid: false, expires at: 1766188792950
+[debug] [2025-12-22T04:27:09.704Z] > refreshing access token with scopes: []
+[debug] [2025-12-22T04:27:09.704Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-12-22T04:27:09.704Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-22T04:27:09.822Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-12-22T04:27:09.822Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-22T04:27:09.833Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/home-calendar-c17ff/billingInfo [none]
+[debug] [2025-12-22T04:27:09.834Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-12-22T04:27:09.834Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-22T04:27:09.843Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/home-calendar-c17ff/billingInfo [none]
+[debug] [2025-12-22T04:27:09.844Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-12-22T04:27:09.844Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-22T04:27:09.852Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/home-calendar-c17ff/billingInfo [none]
+[debug] [2025-12-22T04:27:10.102Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/home-calendar-c17ff/billingInfo 200
+[debug] [2025-12-22T04:27:10.102Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/home-calendar-c17ff/billingInfo {"name":"projects/home-calendar-c17ff/billingInfo","projectId":"home-calendar-c17ff","billingAccountName":"billingAccounts/013BA4-F17915-52F33C","billingEnabled":true}
+[debug] [2025-12-22T04:27:10.105Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.105Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.105Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.105Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.105Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.105Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.109Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.109Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.109Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.109Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.109Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/identitytoolkit.googleapis.com [none]
+[debug] [2025-12-22T04:27:10.109Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/identitytoolkit.googleapis.com x-goog-quota-user=projects/home-calendar-c17ff
+[debug] [2025-12-22T04:27:10.110Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/fcm.googleapis.com [none]
+[debug] [2025-12-22T04:27:10.110Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/fcm.googleapis.com x-goog-quota-user=projects/home-calendar-c17ff
+[debug] [2025-12-22T04:27:10.110Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseremoteconfig.googleapis.com [none]
+[debug] [2025-12-22T04:27:10.110Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseremoteconfig.googleapis.com x-goog-quota-user=projects/home-calendar-c17ff
+[debug] [2025-12-22T04:27:10.110Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseapphosting.googleapis.com [none]
+[debug] [2025-12-22T04:27:10.110Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseapphosting.googleapis.com x-goog-quota-user=projects/home-calendar-c17ff
+[debug] [2025-12-22T04:27:10.111Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseio.com [none]
+[debug] [2025-12-22T04:27:10.111Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseio.com x-goog-quota-user=projects/home-calendar-c17ff
+[debug] [2025-12-22T04:27:10.245Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/home-calendar-c17ff/billingInfo 200
+[debug] [2025-12-22T04:27:10.245Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/home-calendar-c17ff/billingInfo {"name":"projects/home-calendar-c17ff/billingInfo","projectId":"home-calendar-c17ff","billingAccountName":"billingAccounts/013BA4-F17915-52F33C","billingEnabled":true}
+[debug] [2025-12-22T04:27:10.246Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.246Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.246Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.246Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.246Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.246Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.248Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.248Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.248Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.248Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.248Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/identitytoolkit.googleapis.com [none]
+[debug] [2025-12-22T04:27:10.248Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/identitytoolkit.googleapis.com x-goog-quota-user=projects/home-calendar-c17ff
+[debug] [2025-12-22T04:27:10.248Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/fcm.googleapis.com [none]
+[debug] [2025-12-22T04:27:10.248Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/fcm.googleapis.com x-goog-quota-user=projects/home-calendar-c17ff
+[debug] [2025-12-22T04:27:10.248Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseremoteconfig.googleapis.com [none]
+[debug] [2025-12-22T04:27:10.248Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseremoteconfig.googleapis.com x-goog-quota-user=projects/home-calendar-c17ff
+[debug] [2025-12-22T04:27:10.249Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseapphosting.googleapis.com [none]
+[debug] [2025-12-22T04:27:10.249Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseapphosting.googleapis.com x-goog-quota-user=projects/home-calendar-c17ff
+[debug] [2025-12-22T04:27:10.249Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseio.com [none]
+[debug] [2025-12-22T04:27:10.249Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseio.com x-goog-quota-user=projects/home-calendar-c17ff
+[debug] [2025-12-22T04:27:10.356Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/fcm.googleapis.com 200
+[debug] [2025-12-22T04:27:10.357Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/fcm.googleapis.com [omitted]
+[debug] [2025-12-22T04:27:10.365Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseio.com 403
+[debug] [2025-12-22T04:27:10.365Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseio.com [omitted]
+[debug] [2025-12-22T04:27:10.371Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/home-calendar-c17ff/billingInfo 200
+[debug] [2025-12-22T04:27:10.371Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/home-calendar-c17ff/billingInfo {"name":"projects/home-calendar-c17ff/billingInfo","projectId":"home-calendar-c17ff","billingAccountName":"billingAccounts/013BA4-F17915-52F33C","billingEnabled":true}
+[debug] [2025-12-22T04:27:10.372Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.372Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.372Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.372Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.374Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.374Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.374Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/identitytoolkit.googleapis.com [none]
+[debug] [2025-12-22T04:27:10.374Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/identitytoolkit.googleapis.com x-goog-quota-user=projects/home-calendar-c17ff
+[debug] [2025-12-22T04:27:10.374Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseremoteconfig.googleapis.com [none]
+[debug] [2025-12-22T04:27:10.374Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseremoteconfig.googleapis.com x-goog-quota-user=projects/home-calendar-c17ff
+[debug] [2025-12-22T04:27:10.374Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseapphosting.googleapis.com [none]
+[debug] [2025-12-22T04:27:10.374Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseapphosting.googleapis.com x-goog-quota-user=projects/home-calendar-c17ff
+[debug] [2025-12-22T04:27:10.396Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/identitytoolkit.googleapis.com 200
+[debug] [2025-12-22T04:27:10.396Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/identitytoolkit.googleapis.com [omitted]
+[debug] [2025-12-22T04:27:10.497Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/identitytoolkit.googleapis.com 200
+[debug] [2025-12-22T04:27:10.497Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/identitytoolkit.googleapis.com [omitted]
+[debug] [2025-12-22T04:27:10.552Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseremoteconfig.googleapis.com 200
+[debug] [2025-12-22T04:27:10.552Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseremoteconfig.googleapis.com [omitted]
+[debug] [2025-12-22T04:27:10.563Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseapphosting.googleapis.com 200
+[debug] [2025-12-22T04:27:10.563Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseapphosting.googleapis.com [omitted]
+[debug] [2025-12-22T04:27:10.581Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/identitytoolkit.googleapis.com 200
+[debug] [2025-12-22T04:27:10.581Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/identitytoolkit.googleapis.com [omitted]
+[debug] [2025-12-22T04:27:10.588Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-12-22T04:27:10.588Z] > authorizing via signed-in user (itsmeasik@gmail.com)
+[debug] [2025-12-22T04:27:10.588Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.588Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.588Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/home-calendar-c17ff/billingInfo [none]
+[debug] [2025-12-22T04:27:10.666Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseremoteconfig.googleapis.com 200
+[debug] [2025-12-22T04:27:10.666Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseremoteconfig.googleapis.com [omitted]
+[debug] [2025-12-22T04:27:10.672Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseio.com 403
+[debug] [2025-12-22T04:27:10.672Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseio.com [omitted]
+[debug] [2025-12-22T04:27:10.698Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/fcm.googleapis.com 200
+[debug] [2025-12-22T04:27:10.698Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/fcm.googleapis.com [omitted]
+[debug] [2025-12-22T04:27:10.866Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/home-calendar-c17ff/billingInfo 200
+[debug] [2025-12-22T04:27:10.866Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/home-calendar-c17ff/billingInfo {"name":"projects/home-calendar-c17ff/billingInfo","projectId":"home-calendar-c17ff","billingAccountName":"billingAccounts/013BA4-F17915-52F33C","billingEnabled":true}
+[debug] [2025-12-22T04:27:10.866Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-12-22T04:27:10.866Z] > authorizing via signed-in user (itsmeasik@gmail.com)
+[debug] [2025-12-22T04:27:10.875Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseremoteconfig.googleapis.com 200
+[debug] [2025-12-22T04:27:10.875Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseremoteconfig.googleapis.com [omitted]
+[debug] [2025-12-22T04:27:10.937Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseapphosting.googleapis.com 200
+[debug] [2025-12-22T04:27:10.937Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseapphosting.googleapis.com [omitted]
+[debug] [2025-12-22T04:27:10.938Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseapphosting.googleapis.com 200
+[debug] [2025-12-22T04:27:10.938Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/home-calendar-c17ff/services/firebaseapphosting.googleapis.com [omitted]
+[debug] [2025-12-22T04:27:10.985Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-12-22T04:27:10.985Z] > authorizing via signed-in user (itsmeasik@gmail.com)
+[debug] [2025-12-22T04:27:10.985Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.985Z] Checked if tokens are valid: true, expires at: 1766381228844
+[debug] [2025-12-22T04:27:10.985Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/home-calendar-c17ff/billingInfo [none]
+[debug] [2025-12-22T04:27:11.276Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/home-calendar-c17ff/billingInfo 200
+[debug] [2025-12-22T04:27:11.276Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/home-calendar-c17ff/billingInfo {"name":"projects/home-calendar-c17ff/billingInfo","projectId":"home-calendar-c17ff","billingAccountName":"billingAccounts/013BA4-F17915-52F33C","billingEnabled":true}
+[debug] [2025-12-22T04:27:11.278Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-12-22T04:27:11.278Z] > authorizing via signed-in user (itsmeasik@gmail.com)

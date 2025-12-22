@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Layout } from 'react-grid-layout';
+import React, { useState, useEffect, useMemo } from 'react';
+import GridLayout from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { Frame } from '@/types/dashboard';
+import { useDisplayMode } from '@/hooks/useDisplayMode';
 import { FrameWrapper } from './FrameWrapper';
 import { Loader2 } from 'lucide-react';
 import ClockFrame from '../frames/ClockFrame';
@@ -15,11 +16,7 @@ import VideoFrame from '../frames/VideoFrame';
 import TasksFrame from '../frames/TasksFrame';
 import QuotesWidget from '../widgets/QuotesWidget';
 import GifWidget from '../widgets/GifWidget';
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { Responsive, WidthProvider } = require('react-grid-layout/legacy');
-
-const ResponsiveGridLayout = WidthProvider(Responsive);
+import { useMeasure } from 'react-use';
 
 interface DashboardGridProps {
   frames: Frame[];
@@ -27,7 +24,7 @@ interface DashboardGridProps {
   onLayoutChange: (frames: Frame[]) => void;
   onRemoveFrame: (id: string) => void;
   onEditFrame: (id: string) => void;
-  widgetStyle?: 'solid' | 'glass' | 'transparent';
+  widgetStyle?: 'glass' | 'solid' | 'transparent';
 }
 
 export default function DashboardGrid({
@@ -39,30 +36,96 @@ export default function DashboardGrid({
   widgetStyle = 'glass'
 }: DashboardGridProps) {
   const [mounted, setMounted] = useState(false);
+  const { calculateRowHeight } = useDisplayMode();
+  const [ref, { width }] = useMeasure<HTMLDivElement>();
+  const isAddingFrameRef = React.useRef(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const handleLayoutChange = (currentLayout: any[]) => {
-    // Merge new layout positions into existing frames
+  // Track the current layout state internally to prevent react-grid-layout from modifying it
+  const [internalLayout, setInternalLayout] = useState<any[]>([]);
+
+  // Sync internal layout with frames prop, but ONLY when frames change from external source
+  useEffect(() => {
+    const newLayout = frames.map(f => ({
+      i: f.id,
+      x: f.x,
+      y: f.y,
+      w: f.w,
+      h: f.h,
+      minW: f.minW || 2,
+      minH: f.minH || 2
+    }));
+    setInternalLayout(newLayout);
+
+    // Detect if a new frame was added
+    if (newLayout.length > internalLayout.length) {
+      isAddingFrameRef.current = true;
+      setTimeout(() => {
+        isAddingFrameRef.current = false;
+      }, 100);
+    }
+  }, [frames]);
+
+  // Calculate dynamic row height to fill viewport
+  // MUST be before any conditional returns to satisfy Rules of Hooks
+  const rowHeight = useMemo(() => {
+    const targetRows = 8;
+    return calculateRowHeight(targetRows, 120, 16); // 120px header, 16px margin
+  }, [calculateRowHeight]);
+
+  // Generate layout data - use internal layout to prevent react-grid-layout from modifying it
+  const layout = useMemo(() => {
+    return internalLayout.length > 0 ? internalLayout : frames.map(f => ({
+      i: f.id,
+      x: f.x,
+      y: f.y,
+      w: f.w,
+      h: f.h,
+      minW: f.minW || 2,
+      minH: f.minH || 2
+    }));
+  }, [internalLayout, frames]);
+
+  const MAX_ROWS = 8; // Fixed 8 rows to match viewport
+
+  // Handle drag stop - only update when user finishes dragging
+  const handleDragStop = (newLayout: readonly any[]) => {
+    if (isAddingFrameRef.current) return;
+    setInternalLayout([...newLayout]);
+    updateLayout(newLayout);
+  };
+
+  // Handle resize stop - only update when user finishes resizing
+  const handleResizeStop = (newLayout: readonly any[]) => {
+    if (isAddingFrameRef.current) return;
+    setInternalLayout([...newLayout]);
+    updateLayout(newLayout);
+  };
+
+  // Update layout helper function
+  const updateLayout = (currentLayout: readonly any[]) => {
     const updatedFrames = frames.map(frame => {
-      const layoutItem = currentLayout.find(l => l.i === frame.id);
-      if (layoutItem) {
-        return {
-          ...frame,
-          x: layoutItem.x,
-          y: layoutItem.y,
-          w: layoutItem.w,
-          h: layoutItem.h
-        };
-      }
-      return frame;
+      const item = currentLayout.find((l: any) => l.i === frame.id);
+      if (!item) return frame;
+
+      return {
+        ...frame,
+        x: item.x,
+        y: item.y,
+        w: item.w,
+        h: item.h,
+      };
     });
 
-    // Only trigger update if something actually changed to avoid loops
-    // In a real app, we'd do a deep comparison
     onLayoutChange(updatedFrames);
+  };
+
+  // Handle layout change - ignore to prevent auto-compaction
+  const handleLayoutChange = () => {
+    // Do nothing - we only update on drag/resize stop
   };
 
   const renderFrameContent = (frame: Frame) => {
@@ -104,39 +167,65 @@ export default function DashboardGrid({
     );
   }
 
-  // Define basic grid props
-  // 12 columns is standard for flexibility
-  const cols = { lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 };
-
   return (
-    <ResponsiveGridLayout
-      className={`layout h-full ${isEditMode ? 'edit-mode-grid' : ''}`}
-      layouts={{ lg: frames.map(f => ({ i: f.id, x: f.x, y: f.y, w: f.w, h: f.h, minW: f.minW || 2, minH: f.minH || 2 })) }}
-      breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-      cols={cols}
-      rowHeight={60} // Base row height
-      onLayoutChange={(_layout: any, allLayouts: any) => handleLayoutChange(allLayouts.lg || _layout)}
-      isDraggable={isEditMode}
-      isResizable={isEditMode}
-      resizeHandles={['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']}
-      draggableHandle=".draggable-handle"
-      margin={[16, 16]}
-      containerPadding={[0, 0]}
-      compactType={null}
-      preventCollision={true}
-    >
-      {frames.map((frame) => (
-        <FrameWrapper
-          key={frame.id}
-          frame={frame}
-          isEditMode={isEditMode}
-          onRemove={onRemoveFrame}
-          onEdit={onEditFrame}
-          widgetStyle={widgetStyle}
+    <div ref={ref} className={`h-full w-full overflow-visible ${isEditMode ? 'edit-mode-grid' : ''}`}>
+      {width > 0 && (
+        <GridLayout
+          className="layout h-full"
+          layout={layout}
+          width={width}
+          autoSize={false}
+          style={{ minHeight: '100%' }}
+          gridConfig={{
+            cols: 12,
+            rowHeight: rowHeight,
+            maxRows: MAX_ROWS,
+            margin: [16, 16],
+            containerPadding: [0, 0]
+          }}
+          dragConfig={{
+            enabled: isEditMode,
+            handle: ".draggable-handle",
+            bounded: true
+          }}
+          resizeConfig={{
+            enabled: isEditMode,
+            handles: ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']
+          }}
+          compactor={{
+            type: null,
+            allowOverlap: true,
+            preventCollision: false,
+            compact: (layout) => layout, // No compaction
+            onMove: (layout, item, x, y) => {
+              const newLayout = [...layout];
+              const movedItem = newLayout.find(l => l.i === item.i);
+              if (movedItem) {
+                movedItem.x = x;
+                movedItem.y = y;
+              }
+              return newLayout;
+            }
+          }}
+          onLayoutChange={handleLayoutChange}
+          onDragStop={handleDragStop}
+          onResizeStop={handleResizeStop}
         >
-          {renderFrameContent(frame)}
-        </FrameWrapper>
-      ))}
-    </ResponsiveGridLayout>
+          {frames.map((frame) => (
+            <div key={frame.id}>
+              <FrameWrapper
+                frame={frame}
+                isEditMode={isEditMode}
+                onRemove={onRemoveFrame}
+                onEdit={onEditFrame}
+                widgetStyle={widgetStyle}
+              >
+                {renderFrameContent(frame)}
+              </FrameWrapper>
+            </div>
+          ))}
+        </GridLayout>
+      )}
+    </div>
   );
 }

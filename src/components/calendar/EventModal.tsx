@@ -23,6 +23,7 @@ import {
     AlertCircle
 } from 'lucide-react';
 import { z } from 'zod';
+import { RRule } from 'rrule';
 
 const RECURRENCE_OPTIONS: { id: RecurrencePattern; label: string }[] = [
     { id: 'none', label: 'Does not repeat' },
@@ -164,6 +165,37 @@ export function EventModal() {
             ? assignedTo
             : familyMembers.map(m => m.id); // Default to everyone if no one selected (Family mode)
 
+        // Generate Recurrence Rule (RRULE)
+        let rruleString: string | undefined;
+        if (recurrence !== 'none') {
+            const ruleOptions: any = {
+                freq: RRule.WEEKLY, // Default
+                dtstart: start,
+            };
+
+            switch (recurrence) {
+                case 'daily': ruleOptions.freq = RRule.DAILY; break;
+                case 'weekly': ruleOptions.freq = RRule.WEEKLY; break;
+                case 'biweekly':
+                    ruleOptions.freq = RRule.WEEKLY;
+                    ruleOptions.interval = 2;
+                    break;
+                case 'monthly': ruleOptions.freq = RRule.MONTHLY; break;
+                case 'yearly': ruleOptions.freq = RRule.YEARLY; break;
+            }
+
+            // Generate string without "DTSTART" part as RRule.fromString handles that, 
+            // but standard iCal string usually includes it. 
+            // For simplicity, we just store the rule properties string (e.g. FREQ=WEEKLY;INTERVAL=1).
+            const rule = new RRule(ruleOptions);
+            rruleString = rule.toString();
+            console.log('[EventModal] Generated RRULE:', rruleString, 'for recurrence:', recurrence);
+        } else {
+            console.log('[EventModal] No recurrence selected (none)');
+        }
+
+        console.log('[EventModal] Saving event with RRULE:', rruleString);
+
         if (isEditing && editingEvent) {
             // CAUTION: Editing a broadcasted event is complex.
             // For now, if we are editing, we just update the CURRENT event's ID.
@@ -183,6 +215,7 @@ export function EventModal() {
                 calendarId, // Keep existing calendar ID when editing
                 category,
                 recurrence,
+                rrule: rruleString,
                 assignedTo,
             });
         } else {
@@ -211,6 +244,7 @@ export function EventModal() {
                     calendarId: targetCalId,
                     category,
                     recurrence,
+                    rrule: rruleString,
                     assignedTo: [memberId],
                 });
             } else {
@@ -238,6 +272,7 @@ export function EventModal() {
                         calendarId: targetCalId,
                         category,
                         recurrence,
+                        rrule: rruleString,
                         assignedTo: [memberId], // Assign to specific individual
                     });
                 });

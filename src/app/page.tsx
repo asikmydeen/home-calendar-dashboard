@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
 const DashboardGrid = dynamic(() => import('@/components/dashboard/DashboardGrid'), { ssr: false });
+const CanvasContainer = dynamic(() => import('@/components/dashboard/CanvasContainer'), { ssr: false });
 const FrameSettingsModal = dynamic(() => import('@/components/dashboard/FrameSettingsModal'), { ssr: false });
 const DashboardSettings = dynamic(() => import('@/components/dashboard/DashboardSettings'), { ssr: false });
 const PageCarousel = dynamic(() => import('@/components/dashboard/PageCarousel'), { ssr: false });
@@ -41,7 +42,8 @@ export default function Home() {
     updateTheme,
     addPage,
     removePage,
-    updatePage
+    updatePage,
+    moveFrameToPage
   } = useDashboard('demo');
 
   const [isEditMode, setIsEditMode] = useState(false);
@@ -222,14 +224,14 @@ export default function Home() {
         onPageChange={goToPage}
       >
         {(page: DashboardPage, index: number) => (
-          <div className="h-full w-full p-4 md:p-6 overflow-hidden flex flex-col">
+          <div className="h-full w-full p-4 md:p-6 flex flex-col">
             {/* Page Title */}
             <h1 className="text-2xl font-light mb-4 text-white/50 select-none drop-shadow-lg shrink-0">
               {page.name}
             </h1>
 
             {/* Widgets or Empty State - fill remaining space */}
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 overflow-visible">
               {page.frames.length > 0 ? (
                 <DashboardGrid
                   frames={page.frames}
@@ -267,6 +269,9 @@ export default function Home() {
         isOpen={!!editingFrame}
         onClose={() => setEditingFrame(null)}
         onSave={handleSaveFrame}
+        pages={dashboard.pages}
+        currentPageIndex={currentPageIndex}
+        onMoveToPage={moveFrameToPage}
       />
 
       {/* Dashboard Settings Modal */}

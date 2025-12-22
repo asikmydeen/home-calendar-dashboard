@@ -47,6 +47,12 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         isLoading: true,
     });
 
+    // Use a ref for familyMembers to avoid restarting listener on every update
+    const familyMembersRef = React.useRef(familyMembers);
+    React.useEffect(() => {
+        familyMembersRef.current = familyMembers;
+    }, [familyMembers]);
+
     // Listen to Firestore for connected accounts
     useEffect(() => {
         if (!user) {
@@ -65,11 +71,12 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
                     collection(db, 'integrations', user.uid, 'accounts'),
                     (snapshot) => {
                         const accounts: ConnectedAccount[] = [];
+                        const currentFamilyMembers = familyMembersRef.current;
 
                         snapshot.forEach((doc) => {
                             const data = doc.data();
                             // Find linked member by matching account email to member's connectedAccounts
-                            const linkedMember = familyMembers.find(m =>
+                            const linkedMember = currentFamilyMembers.find(m =>
                                 m.connectedAccounts?.some(acc => acc.accountId === doc.id || acc.email === data.email)
                             );
 
@@ -85,11 +92,19 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
                             });
                         });
 
-                        setState(prev => ({
-                            ...prev,
-                            accounts,
-                            isLoading: false,
-                        }));
+                        setState(prev => {
+                            // Only update if accounts actually changed to prevent render loops
+                            const prevJson = JSON.stringify(prev.accounts);
+                            const newJson = JSON.stringify(accounts);
+                            if (prevJson === newJson && !prev.isLoading) {
+                                return prev;
+                            }
+                            return {
+                                ...prev,
+                                accounts,
+                                isLoading: false,
+                            };
+                        });
                     },
                     (error) => {
                         console.error('Error listening to accounts:', error);
@@ -111,7 +126,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         return () => {
             unsubscribe?.();
         };
-    }, [user, familyMembers]);
+    }, [user]); // Only depend on user, not familyMembers
 
     // Connect a Google account for a specific family member using popup
     const connectGoogleAccount = useCallback(async (memberId: string) => {

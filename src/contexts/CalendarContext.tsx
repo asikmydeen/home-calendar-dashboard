@@ -12,6 +12,7 @@ import {
     DEFAULT_CALENDARS,
     DEFAULT_FAMILY_MEMBERS,
 } from '@/types/calendar';
+import { RRule } from 'rrule';
 
 import { useHousehold } from './HouseholdContext';
 import { useAccounts } from './AccountsContext';
@@ -160,8 +161,21 @@ function calendarReducer(state: CalendarState, action: CalendarAction): Calendar
         case 'SET_EVENTS':
             return { ...state, events: action.payload };
 
-        case 'SET_CALENDARS':
-            return { ...state, calendars: action.payload };
+        case 'SET_CALENDARS': {
+            const newCalendars = action.payload;
+            const currentCalendarIds = state.calendars.map(c => c.id);
+            const newCalendarIds = newCalendars.map(c => c.id);
+
+            // Find IDs that are completely new to the system
+            const addedIds = newCalendarIds.filter(id => !currentCalendarIds.includes(id));
+
+            return {
+                ...state,
+                calendars: newCalendars,
+                // Default new calendars to visible
+                visibleCalendarIds: [...state.visibleCalendarIds, ...addedIds]
+            };
+        }
 
         case 'SET_LOADING':
             return { ...state, isLoading: action.payload };
@@ -316,7 +330,7 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
         return () => {
             isMounted = false;
         };
-    }, [accounts, state.selectedDate, familyMembersRef]); // Re-fetch when accounts or date changes
+    }, [accounts, state.selectedDate]); // Re-fetch when accounts or date changes
 
     // Save events to localStorage on change
     useEffect(() => {
@@ -567,7 +581,73 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
         dispatch({ type: 'TOGGLE_MEMBER_FILTER', payload: memberId });
     }, []);
 
-    const filteredEvents = state.events.filter(event => {
+    // Computed & Expanded Events
+    const expandedEvents = React.useMemo(() => {
+        // Calculate expansion range based on selected date
+        // Same window as fetch (approx -1 to +2 months) to ensure smooth nav
+        const startRange = new Date(state.selectedDate);
+        startRange.setMonth(startRange.getMonth() - 1);
+        startRange.setDate(1);
+
+        const endRange = new Date(state.selectedDate);
+        endRange.setMonth(endRange.getMonth() + 2);
+        endRange.setDate(0);
+
+        const instances: CalendarEvent[] = [];
+
+        state.events.forEach(event => {
+            // 1. If not recurring, just add it
+            if (!event.rrule) {
+                instances.push(event);
+                return;
+            }
+
+            // 2. Expand Recurring Event (Local Master)
+            try {
+                // Adjust start time to be valid for RRule
+                const dtstart = new Date(event.start);
+
+                // Parse rule
+                const rule = RRule.fromString(event.rrule);
+
+                // Override dtstart in options to match event start 
+                // (RRule string might not have it or might be generic)
+                const options = rule.origOptions;
+                options.dtstart = dtstart;
+                const adjustedRule = new RRule(options);
+
+                // Get dates in range
+                const dates = adjustedRule.between(startRange, endRange, true);
+                console.log(`[CalendarContext] Expanded event ${event.title} (${event.id}): ${dates.length} instances between ${startRange.toISOString()} and ${endRange.toISOString()}`);
+
+                // Create instances
+                const durationMs = event.end.getTime() - event.start.getTime();
+
+                dates.forEach(date => {
+                    const instanceStart = date;
+                    const instanceEnd = new Date(date.getTime() + durationMs);
+
+                    instances.push({
+                        ...event,
+                        id: `${event.id}_${date.getTime()}`, // Composite ID for instance
+                        recurrenceParentId: event.id,
+                        start: instanceStart,
+                        end: instanceEnd,
+                        // We keep the rest of the metadata
+                    });
+                });
+
+            } catch (err) {
+                console.error(`Failed to expand recurrence for event ${event.id}:`, err);
+                // Fallback: show original
+                instances.push(event);
+            }
+        });
+
+        return instances;
+    }, [state.events, state.selectedDate]);
+
+    const filteredEvents = expandedEvents.filter(event => {
         if (!state.visibleCalendarIds.includes(event.calendarId)) {
             return false;
         }

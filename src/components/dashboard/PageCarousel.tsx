@@ -109,7 +109,7 @@ export default function PageCarousel({
             {pages.map((page, index) => (
                 <div
                     key={page.id}
-                    className="page-slide flex-shrink-0 w-full h-full"
+                    className="page-slide flex-shrink-0 w-full h-full overflow-visible"
                     style={{ scrollSnapAlign: 'start' }}
                 >
                     {children(page, index)}

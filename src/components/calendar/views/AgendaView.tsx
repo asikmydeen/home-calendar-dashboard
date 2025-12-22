@@ -29,19 +29,23 @@ export function AgendaView() {
     // Group events by time period
     const groupEvents = (): EventGroup[] => {
         const groups: EventGroup[] = [];
-        const today = startOfDay(new Date());
-        const tomorrow = startOfDay(addWeeks(today, 0));
-        const endOfThisWeek = endOfDay(addWeeks(today, 1));
-        const endOfNextWeek = endOfDay(addWeeks(today, 2));
+        const anchorDate = startOfDay(selectedDate);
+        console.log('[AgendaView] selectedDate:', selectedDate.toISOString(), 'anchorDate:', anchorDate.toISOString());
+
+        const actualToday = startOfDay(new Date());
+
+        // Use anchorDate for grouping logic, typically Agenda shows next 2 weeks from selected date
+        const endDate = endOfDay(addWeeks(anchorDate, 2));
 
         // Sort all events by start date
         const sortedEvents = [...filteredEvents].sort(
             (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
         );
+        console.log('[AgendaView] Total sorted events:', sortedEvents.length);
 
-        // Filter out past events (before today)
+        // Filter out past events (relative to selected date)
         const upcomingEvents = sortedEvents.filter(
-            event => !isBefore(endOfDay(new Date(event.start)), today)
+            event => !isBefore(endOfDay(new Date(event.start)), anchorDate)
         );
 
         // Group by date
@@ -63,11 +67,11 @@ export function AgendaView() {
                 label = '📍 Today';
             } else if (isTomorrow(date)) {
                 label = '🌅 Tomorrow';
-            } else if (isThisWeek(date, { weekStartsOn: 0 })) {
+            } else if (isBefore(date, addWeeks(startOfDay(new Date()), 1))) {
+                // If within this current real week, show Day Name
                 label = format(date, 'EEEE');
-            } else if (isBefore(date, endOfNextWeek)) {
-                label = format(date, "'Next' EEEE");
             } else {
+                // Otherwise full date
                 label = format(date, 'EEEE, MMMM d');
             }
 

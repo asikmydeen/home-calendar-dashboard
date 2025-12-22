@@ -146,6 +146,12 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
     // Track Firestore listener to clean up on logout
     const firestoreUnsubscribeRef = React.useRef<(() => void) | undefined>(undefined);
 
+    // Ref to track current state for comparison in async callbacks (avoids stale closure)
+    const stateRef = React.useRef(state);
+    React.useEffect(() => {
+        stateRef.current = state;
+    }, [state]);
+
     // Load household data - first try Firestore, fallback to localStorage for migration
     useEffect(() => {
         let unsubscribe: (() => void) | undefined;
@@ -201,12 +207,21 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
                                     ...m,
                                     connectedAccounts: m.connectedAccounts || []
                                 }));
-                                dispatch({ type: 'SET_MEMBERS', payload: members });
+
+                                // Only dispatch if data actually changed to prevent loops
+                                const currentState = stateRef.current;
+                                const currentMembersJson = JSON.stringify(currentState.familyMembers);
+                                const newMembersJson = JSON.stringify(members);
+                                if (currentMembersJson !== newMembersJson) {
+                                    dispatch({ type: 'SET_MEMBERS', payload: members });
+                                }
                             }
-                            if (data.currentMemberId) {
+                            if (data.currentMemberId && data.currentMemberId !== stateRef.current.currentUserMemberId) {
                                 dispatch({ type: 'SET_CURRENT_USER_MEMBER_ID', payload: data.currentMemberId });
                             }
-                            dispatch({ type: 'SET_SYNCED', payload: true });
+                            if (!stateRef.current.isSynced) {
+                                dispatch({ type: 'SET_SYNCED', payload: true });
+                            }
                         } else {
                             // No Firestore data - check for localStorage migration
                             try {

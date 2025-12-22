@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Frame, FrameType } from '@/types/dashboard';
-import { X, Save } from 'lucide-react';
+import { Frame, FrameType, DashboardPage } from '@/types/dashboard';
+import { X, Save, ArrowRightLeft } from 'lucide-react';
 import { CalendarModuleSettings } from './CalendarModuleSettings';
 
 interface FrameSettingsModalProps {
@@ -11,9 +11,20 @@ interface FrameSettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSave: (frame: Frame) => void;
+    pages?: DashboardPage[];
+    currentPageIndex?: number;
+    onMoveToPage?: (frameId: string, targetPageIndex: number) => void;
 }
 
-export default function FrameSettingsModal({ frame, isOpen, onClose, onSave }: FrameSettingsModalProps) {
+export default function FrameSettingsModal({
+    frame,
+    isOpen,
+    onClose,
+    onSave,
+    pages = [],
+    currentPageIndex = 0,
+    onMoveToPage
+}: FrameSettingsModalProps) {
     const [title, setTitle] = useState('');
     const [config, setConfig] = useState<Record<string, any>>({});
     const [mounted, setMounted] = useState(false);
@@ -337,6 +348,42 @@ export default function FrameSettingsModal({ frame, isOpen, onClose, onSave }: F
                         <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">Widget Settings</h3>
                         {renderConfigFields()}
                     </div>
+
+                    {/* Move to Page - Only show if there are multiple pages */}
+                    {pages.length > 1 && onMoveToPage && (
+                        <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                            <div className="flex items-center gap-2 mb-3">
+                                <ArrowRightLeft className="w-4 h-4 text-purple-500" />
+                                <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Move to Page</h3>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                                {pages.map((page, index) => (
+                                    <button
+                                        key={page.id}
+                                        onClick={() => {
+                                            if (index !== currentPageIndex && frame) {
+                                                onMoveToPage(frame.id, index);
+                                                onClose();
+                                            }
+                                        }}
+                                        disabled={index === currentPageIndex}
+                                        className={`
+                                            p-3 rounded-xl text-center transition-all text-sm
+                                            ${index === currentPageIndex
+                                                ? 'bg-purple-600/20 border-2 border-purple-500 cursor-default'
+                                                : 'bg-zinc-100 dark:bg-zinc-800 border-2 border-transparent hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30'
+                                            }
+                                        `}
+                                    >
+                                        <p className="font-medium text-zinc-900 dark:text-zinc-100 truncate">{page.name}</p>
+                                        {index === currentPageIndex && (
+                                            <p className="text-xs text-purple-500 mt-0.5">Current</p>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer */}

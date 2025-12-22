@@ -103,7 +103,8 @@ export interface CalendarEvent {
     color?: string; // Override calendar color
 
     // Recurrence
-    recurrence: RecurrencePattern;
+    recurrence: RecurrencePattern; // Legacy/UI helper
+    rrule?: string; // RFC 5545 recurrence rule string
     recurrenceEndDate?: Date;
     recurrenceParentId?: string; // For recurring event instances
 
