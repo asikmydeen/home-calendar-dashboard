@@ -545,10 +545,21 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
 
                 const { deleteEvent } = await import('@/lib/googleCalendar');
                 await deleteEvent(googleId, event.calendarId, accountId);
-            } catch (error) {
+            } catch (error: any) {
                 console.error('Failed to delete Google event:', error);
-                // Rollback
-                dispatch({ type: 'ADD_EVENT', payload: event as any });
+
+                // If the error is "Not Found" or 404, it means it's already deleted in Google.
+                // In that case, we should NOT rollback (i.e., we accept the local delete).
+                const isNotFound = error.code === 404 ||
+                    error.message?.includes('Not Found') ||
+                    error.toString().includes('Not Found');
+
+                if (!isNotFound) {
+                    // Only rollback if it was a real error (connection, permission, etc.)
+                    dispatch({ type: 'ADD_EVENT', payload: event as any });
+                } else {
+                    console.warn('Event already deleted in Google Calendar, keeping local delete.');
+                }
             }
         }
     }, [state.events]);

@@ -11,25 +11,40 @@ import {
 } from 'date-fns';
 import { EventCard } from '../EventCard';
 import { getEventsForDate, sortEventsByTime, CalendarEvent } from '@/types/calendar';
+import { getContrastColor } from '@/lib/utils';
 
-const HOURS = Array.from({ length: 13 }, (_, i) => i + 7); // 7 AM to 7 PM
+// ... imports
+import { useEffect, useRef } from 'react';
+
+// ...
+
+const HOURS = Array.from({ length: 24 }, (_, i) => i); // 0 to 23
 const HOUR_HEIGHT = 64;
 
-function getContrastColor(hex: string): string {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    return luminance > 0.5 ? '#374151' : '#ffffff';
-}
+// ...
 
 export function DayView() {
     const { selectedDate, filteredEvents, calendars, openEventModal } = useCalendar();
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     const dayEvents = sortEventsByTime(getEventsForDate(filteredEvents, selectedDate));
     const allDayEvents = dayEvents.filter(e => e.isAllDay);
     const timedEvents = dayEvents.filter(e => !e.isAllDay);
     const isTodayDate = isToday(selectedDate);
+
+    // Scroll to 8 AM (or current time) on mount
+    useEffect(() => {
+        if (scrollContainerRef.current) {
+            // Default to 8 AM, or current hour - 1 if it's today and later than 8 AM
+            let scrollHour = 8;
+            if (isTodayDate) {
+                const current = new Date().getHours();
+                if (current > 8) scrollHour = Math.max(0, current - 1);
+            }
+            scrollContainerRef.current.scrollTop = scrollHour * HOUR_HEIGHT;
+        }
+    }, [selectedDate]); // Re-scroll when date changes too? Maybe just once or intelligent/smooth scroll? 
+    // For now, let's do when date changes to focus "morning" of that day.
 
     const handleTimeSlotClick = (hour: number) => {
         const start = setMinutes(setHours(new Date(selectedDate), hour), 0);
@@ -58,8 +73,8 @@ export function DayView() {
     // Get current time position
     const now = new Date();
     const currentHour = now.getHours() + now.getMinutes() / 60;
-    const currentTimeTop = (currentHour - 7) * HOUR_HEIGHT;
-    const showCurrentTime = isTodayDate && currentHour >= 7 && currentHour <= 20;
+    const currentTimeTop = currentHour * HOUR_HEIGHT; // Simple 0-based
+    const showCurrentTime = isTodayDate; // Show always if today
 
     return (
         <div className="h-full flex flex-col overflow-hidden bg-white">
@@ -95,8 +110,11 @@ export function DayView() {
             )}
 
             {/* Time grid */}
-            <div className="flex-1 overflow-y-auto">
-                <div className="relative">
+            <div
+                ref={scrollContainerRef}
+                className="flex-1 overflow-y-auto relative scroll-smooth bg-white" // Added ref and bg
+            >
+                <div className="relative min-h-[1536px]"> {/* 24 * 64 = 1536px ensures full height */}
                     {/* Current time indicator */}
                     {showCurrentTime && (
                         <div
@@ -145,7 +163,7 @@ export function DayView() {
                             const startHour = startDate.getHours() + startDate.getMinutes() / 60;
                             const duration = differenceInMinutes(endDate, startDate) / 60;
 
-                            const topOffset = (startHour - 7) * HOUR_HEIGHT;
+                            const topOffset = startHour * HOUR_HEIGHT; // Simple 0-based
                             const height = Math.max(duration * HOUR_HEIGHT, 32);
                             const color = getEventColor(event);
                             const textColor = getContrastColor(color);

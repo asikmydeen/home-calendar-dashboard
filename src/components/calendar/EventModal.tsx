@@ -98,6 +98,8 @@ export function EventModal() {
     // Validation state
     const [errors, setErrors] = useState<Record<string, string>>({});
 
+
+
     // Initialize form with editing event
     useEffect(() => {
         if (editingEvent) {
@@ -189,12 +191,7 @@ export function EventModal() {
             // For simplicity, we just store the rule properties string (e.g. FREQ=WEEKLY;INTERVAL=1).
             const rule = new RRule(ruleOptions);
             rruleString = rule.toString();
-            console.log('[EventModal] Generated RRULE:', rruleString, 'for recurrence:', recurrence);
-        } else {
-            console.log('[EventModal] No recurrence selected (none)');
         }
-
-        console.log('[EventModal] Saving event with RRULE:', rruleString);
 
         if (isEditing && editingEvent) {
             // CAUTION: Editing a broadcasted event is complex.
@@ -234,19 +231,21 @@ export function EventModal() {
                         : `cal-${memberId}`;
                 }
 
-                addEvent({
-                    title: title.trim(),
-                    description: description.trim() || undefined,
-                    location: location.trim() || undefined,
-                    start,
-                    end,
-                    isAllDay,
-                    calendarId: targetCalId,
-                    category,
-                    recurrence,
-                    rrule: rruleString,
-                    assignedTo: [memberId],
-                });
+                if (targetCalId) {
+                    addEvent({
+                        title: title.trim(),
+                        description: description.trim() || undefined,
+                        location: location.trim() || undefined,
+                        start,
+                        end,
+                        isAllDay,
+                        calendarId: targetCalId,
+                        category,
+                        recurrence,
+                        rrule: rruleString,
+                        assignedTo: [memberId],
+                    });
+                }
             } else {
                 // 2. Broadcast Mode: Create separate event for EACH target member
                 // This satisfies "created in everyone's calendar"
@@ -282,8 +281,21 @@ export function EventModal() {
         closeEventModal();
     };
 
-    const handleDelete = () => {
-        if (editingEvent?.id && confirm('Are you sure you want to delete this event?')) {
+    // State for delete confirmation
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const handleDelete = (e?: React.MouseEvent) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        if (!isDeleting) {
+            setIsDeleting(true);
+            return;
+        }
+
+        if (editingEvent?.id) {
             deleteEvent(editingEvent.id);
             closeEventModal();
         }
@@ -319,7 +331,10 @@ export function EventModal() {
             />
 
             {/* Modal */}
-            <div className="relative bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-zinc-700 max-h-[90vh] flex flex-col">
+            <div
+                className="relative bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-zinc-700 max-h-[90vh] flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+            >
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 shrink-0">
                     <h2 className="text-lg font-semibold text-white">
@@ -496,7 +511,7 @@ export function EventModal() {
                         <div>
                             <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
                                 <MapPin className="w-4 h-4" />
-                                <span>Location</span>
+                                <span className="ml-1">Location</span>
                             </div>
                             <input
                                 type="text"
@@ -540,31 +555,55 @@ export function EventModal() {
                 {/* Footer */}
                 <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-800 bg-zinc-800/50 shrink-0">
                     {isEditing ? (
-                        <button
-                            onClick={handleDelete}
-                            className="flex items-center gap-2 px-4 py-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                            Delete
-                        </button>
+                        <div className="flex items-center gap-2">
+                            {isDeleting ? (
+                                <>
+                                    <button
+                                        onClick={() => setIsDeleting(false)}
+                                        className="px-3 py-2 text-xs text-zinc-400 hover:text-white transition-colors"
+                                    >
+                                        Back
+                                    </button>
+                                    <button
+                                        onClick={handleDelete}
+                                        className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors border border-red-500/20"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                        Confirm Delete?
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    onClick={handleDelete}
+                                    className="flex items-center gap-2 px-4 py-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                    Delete
+                                </button>
+                            )}
+                        </div>
                     ) : (
                         <div />
                     )}
 
                     <div className="flex items-center gap-3">
-                        <button
-                            onClick={closeEventModal}
-                            className="px-4 py-2 text-zinc-400 hover:bg-zinc-700 rounded-lg transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            className="flex items-center gap-2 px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-                        >
-                            <Save className="w-4 h-4" />
-                            {isEditing ? 'Save' : 'Create'}
-                        </button>
+                        {!isDeleting && (
+                            <>
+                                <button
+                                    onClick={closeEventModal}
+                                    className="px-4 py-2 text-zinc-400 hover:bg-zinc-700 rounded-lg transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSave}
+                                    className="flex items-center gap-2 px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                                >
+                                    <Save className="w-4 h-4" />
+                                    {isEditing ? 'Save' : 'Create'}
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

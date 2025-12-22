@@ -12,7 +12,15 @@ export function FamilyMemberBar({ className = '' }: FamilyMemberBarProps) {
     const { familyMembers, selectedMemberIds, toggleMemberFilter, filteredEvents } = useCalendar();
 
     const getMemberEventCount = (memberId: string) => {
-        return filteredEvents.filter(e => e.assignedTo.includes(memberId)).length;
+        // Filter strictly for TODAY's events
+        return filteredEvents.filter(e => {
+            if (!e.assignedTo.includes(memberId)) return false;
+            const eventDate = new Date(e.start);
+            const today = new Date();
+            return eventDate.getDate() === today.getDate() &&
+                eventDate.getMonth() === today.getMonth() &&
+                eventDate.getFullYear() === today.getFullYear();
+        }).length;
     };
 
     return (
