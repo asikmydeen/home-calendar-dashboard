@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useCalendar } from '@/contexts/CalendarContext';
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, startOfDay, endOfDay } from 'date-fns';
 import { Eye, EyeOff, Users } from 'lucide-react';
 
 export function CalendarSidebar() {
@@ -15,20 +15,53 @@ export function CalendarSidebar() {
         selectedMemberIds,
         toggleCalendarVisibility,
         toggleMemberFilter,
-        filteredEvents
+        filteredEvents,
+        currentView // Need current view to determine range
     } = useCalendar();
 
-    // Mini calendar dates
+    // Mini calendar dates (Always Month view for the mini-calendar itself)
     const monthStart = startOfMonth(selectedDate);
     const monthEnd = endOfMonth(selectedDate);
     const calendarStart = startOfWeek(monthStart);
     const calendarEnd = endOfWeek(monthEnd);
     const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
+    // Determine the *Active View* range for counting events
+    const viewStart = React.useMemo(() => {
+        switch (currentView) {
+            case 'day': return startOfDay(selectedDate);
+            case 'week': return startOfWeek(selectedDate);
+            case 'month': return startOfMonth(selectedDate);
+            case 'agenda': return startOfMonth(selectedDate); // Agenda usually shows month or custom
+            default: return startOfMonth(selectedDate);
+        }
+    }, [currentView, selectedDate]);
+
+    const viewEnd = React.useMemo(() => {
+        switch (currentView) {
+            case 'day': return endOfDay(selectedDate);
+            case 'week': return endOfWeek(selectedDate);
+            case 'month': return endOfMonth(selectedDate);
+            case 'agenda': return endOfMonth(selectedDate);
+            default: return endOfMonth(selectedDate);
+        }
+    }, [currentView, selectedDate]);
+
+    // Filter events to only those in the current view
+    const eventsInView = React.useMemo(() => {
+        return filteredEvents.filter(e => {
+            const start = new Date(e.start);
+            const end = new Date(e.end);
+            // Check for overlap
+            return start <= viewEnd && end >= viewStart;
+        });
+    }, [filteredEvents, viewStart, viewEnd]);
+
+
     // Get event count for a member (including all events assigned to them)
     // For Google events, we check if they are explicitly assigned to this member
     const getMemberEventCount = (memberId: string) => {
-        return filteredEvents.filter(e => e.assignedTo?.includes(memberId)).length;
+        return eventsInView.filter(e => e.assignedTo?.includes(memberId)).length;
     };
 
     // Get event count for Family calendar
@@ -36,7 +69,7 @@ export function CalendarSidebar() {
     // 1. Explicit 'family' calendar events
     // 2. Google events that are NOT assigned to any specific member (fallback to family)
     const getFamilyEventCount = () => {
-        return filteredEvents.filter(e => {
+        return eventsInView.filter(e => {
             const isFamilyCal = e.calendarId === 'family';
             const isUnassignedGoogle = e.calendarId.startsWith('google-') && (!e.assignedTo || e.assignedTo.length === 0);
             return isFamilyCal || isUnassignedGoogle;
@@ -206,9 +239,11 @@ export function CalendarSidebar() {
                 <div className="bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl p-3 border border-orange-200/50">
                     <h3 className="text-xs font-semibold text-slate-700 mb-1">Total Events</h3>
                     <div className="text-2xl font-bold text-orange-600">
-                        {filteredEvents.length}
+                        {eventsInView.length}
                     </div>
-                    <p className="text-[10px] text-slate-500">visible in current view</p>
+                    <p className="text-[10px] text-slate-500">
+                        visible in current {currentView === 'agenda' ? 'month' : currentView}
+                    </p>
                 </div>
             </div>
         </div>

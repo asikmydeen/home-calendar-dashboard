@@ -48,15 +48,17 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     });
 
     // Use a ref for familyMembers to avoid restarting listener on every update
-    const familyMembersRef = React.useRef(familyMembers);
-    React.useEffect(() => {
-        familyMembersRef.current = familyMembers;
-    }, [familyMembers]);
+    // REMOVED: familyMembersRef is no longer needed for the snapshot listener
+    // as we will handle linking in a separate effect
+
+    // Store raw data from Firestore to allow re-linking when familyMembers change
+    const [rawAccounts, setRawAccounts] = useState<Array<{ id: string, data: any }>>([]);
 
     // Listen to Firestore for connected accounts
     useEffect(() => {
         if (!user) {
             setState(prev => ({ ...prev, accounts: [], isLoading: false }));
+            setRawAccounts([]);
             return;
         }
 
@@ -70,47 +72,17 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
                 unsubscribe = onSnapshot(
                     collection(db, 'integrations', user.uid, 'accounts'),
                     (snapshot) => {
-                        const accounts: ConnectedAccount[] = [];
-                        const currentFamilyMembers = familyMembersRef.current;
-
+                        const newRawAccounts: Array<{ id: string, data: any }> = [];
                         snapshot.forEach((doc) => {
-                            const data = doc.data();
-                            // Find linked member by matching account email to member's connectedAccounts
-                            const linkedMember = currentFamilyMembers.find(m =>
-                                m.connectedAccounts?.some(acc => acc.accountId === doc.id || acc.email === data.email)
-                            );
-
-                            accounts.push({
-                                accountId: doc.id,
-                                provider: data.provider || 'google',
-                                email: data.email || '',
-                                displayName: data.displayName || data.email || 'Unknown',
-                                isConnected: !!data.accessToken,
-                                lastSyncedAt: data.updatedAt?.toDate?.() || undefined,
-                                error: data.error,
-                                linkedMemberId: linkedMember?.id,
-                            });
+                            newRawAccounts.push({ id: doc.id, data: doc.data() });
                         });
-
-                        setState(prev => {
-                            // Only update if accounts actually changed to prevent render loops
-                            const prevJson = JSON.stringify(prev.accounts);
-                            const newJson = JSON.stringify(accounts);
-                            if (prevJson === newJson && !prev.isLoading) {
-                                return prev;
-                            }
-                            return {
-                                ...prev,
-                                accounts,
-                                isLoading: false,
-                            };
-                        });
+                        setRawAccounts(newRawAccounts);
                     },
                     (error) => {
                         console.error('Error listening to accounts:', error);
                         setState(prev => ({
                             ...prev,
-                            isLoading: false,
+                            isLoading: false, // Stop loading on error
                             lastSyncError: error.message,
                         }));
                     }
@@ -126,7 +98,42 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         return () => {
             unsubscribe?.();
         };
-    }, [user]); // Only depend on user, not familyMembers
+    }, [user]);
+
+    // Derive connected accounts whenever raw data OR family members change
+    useEffect(() => {
+        const derivedAccounts: ConnectedAccount[] = rawAccounts.map(({ id, data }) => {
+            // Find linked member by matching account email to member's connectedAccounts
+            const linkedMember = familyMembers.find(m =>
+                m.connectedAccounts?.some(acc => acc.accountId === id || acc.email === data.email)
+            );
+
+            return {
+                accountId: id,
+                provider: data.provider || 'google',
+                email: data.email || '',
+                displayName: data.displayName || data.email || 'Unknown',
+                isConnected: !!data.accessToken,
+                lastSyncedAt: data.updatedAt?.toDate?.() || undefined,
+                error: data.error,
+                linkedMemberId: linkedMember?.id,
+            };
+        });
+
+        setState(prev => {
+            // Only update if accounts actually changed to prevent render loops
+            const prevJson = JSON.stringify(prev.accounts);
+            const newJson = JSON.stringify(derivedAccounts);
+            if (prevJson === newJson && !prev.isLoading) {
+                return prev;
+            }
+            return {
+                ...prev,
+                accounts: derivedAccounts,
+                isLoading: false, // Loading is done once we have processed the raw accounts
+            };
+        });
+    }, [rawAccounts, familyMembers]);
 
     // Connect a Google account for a specific family member using popup
     const connectGoogleAccount = useCallback(async (memberId: string) => {

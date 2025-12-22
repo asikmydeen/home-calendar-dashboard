@@ -279,6 +279,8 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
                             acc.accountId
                         );
 
+                        console.log(`[CalendarContext] Account ${acc.accountId} (${acc.email}) linked to member: ${acc.linkedMemberId}`);
+
                         // Transform to app format
                         const mappedEvents = events.map(e => ({
                             ...e,
@@ -295,7 +297,7 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
                             recurrence: 'none' as const,
                             assignedTo: acc.linkedMemberId ? [acc.linkedMemberId] : [],
                         }));
-                        console.log(`[CalendarContext] Fetched ${mappedEvents.length} events for account ${acc.accountId}`);
+                        console.log(`[CalendarContext] Fetched ${mappedEvents.length} events for account ${acc.accountId}. Sample assignedTo:`, mappedEvents[0]?.assignedTo);
                         allGoogleEvents.push(...mappedEvents);
                     } catch (err) {
                         console.error(`Failed to fetch events for account ${acc.accountId}:`, err);
