@@ -20,7 +20,7 @@ function CalendarContent() {
     if (isLoading) {
         return (
             <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-white">
-                <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+                <Loader2 className="w-6 h-6 animate-spin text-orange-500" />
             </div>
         );
     }
@@ -41,26 +41,26 @@ function CalendarContent() {
 
     return (
         <div className="h-full w-full flex flex-col bg-gradient-to-br from-amber-50 via-orange-50/30 to-white overflow-hidden">
-            {/* Premium Header */}
-            <div className="flex-shrink-0 p-4 pb-2">
+            {/* Premium Header - scales with container */}
+            <div className="flex-shrink-0 p-[2%]">
                 <CalendarHeader familyName="Our Family" />
             </div>
 
-            {/* Family Member Bar + View Switcher */}
-            <div className="flex-shrink-0 px-4 py-3 flex items-center justify-between">
-                <FamilyMemberBar />
+            {/* Family Member Bar + View Switcher - compact row */}
+            <div className="flex-shrink-0 px-[2%] py-[1%] flex items-center justify-between gap-2 flex-wrap">
+                <FamilyMemberBar className="flex-1 min-w-0" />
                 <ViewSwitcher />
             </div>
 
-            {/* Main Content Area */}
-            <div className="flex-1 flex overflow-hidden px-4 pb-4">
-                {/* Sidebar - hidden on mobile */}
-                <div className="hidden lg:block w-72 flex-shrink-0 mr-4 overflow-y-auto bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-100">
+            {/* Main Content Area - takes remaining space */}
+            <div className="flex-1 flex overflow-hidden px-[2%] pb-[2%] min-h-0">
+                {/* Sidebar - responsive width, scrollable if needed */}
+                <div className="hidden lg:flex lg:flex-col w-[280px] flex-shrink-0 mr-[1%] overflow-hidden bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-100">
                     <CalendarSidebar />
                 </div>
 
-                {/* Calendar View */}
-                <div className="flex-1 overflow-hidden bg-white/90 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-100">
+                {/* Calendar View - takes remaining space */}
+                <div className="flex-1 overflow-hidden bg-white/90 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-100 min-w-0">
                     {renderView()}
                 </div>
             </div>
@@ -77,4 +77,3 @@ function CalendarContent() {
 export default function FullPageCalendar() {
     return <CalendarContent />;
 }
-
