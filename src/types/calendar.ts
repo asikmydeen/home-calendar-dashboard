@@ -28,16 +28,16 @@ export const CATEGORY_ICONS: Record<EventCategory, string> = {
 };
 
 export const CATEGORY_COLORS: Record<EventCategory, string> = {
-    general: '#6366f1',
-    school: '#f59e0b',
-    medical: '#ef4444',
-    sports: '#10b981',
-    music: '#8b5cf6',
-    family: '#ec4899',
-    work: '#3b82f6',
-    meal: '#f97316',
-    routine: '#06b6d4',
-    synced: '#4285F4',
+    general: '#E8B4BC',   // Soft rose
+    school: '#F5D0A9',    // Warm peach
+    medical: '#FF9B9B',   // Soft coral
+    sports: '#A8D5BA',    // Sage green
+    music: '#C9B6E4',     // Lavender
+    family: '#FFB5C5',    // Blush pink
+    work: '#89CFF0',      // Baby blue
+    meal: '#FFD4A3',      // Apricot
+    routine: '#B5EAD7',   // Mint
+    synced: '#A0C4FF',    // Sky blue
 };
 
 export type RecurrencePattern =

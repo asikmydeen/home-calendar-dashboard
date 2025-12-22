@@ -6,16 +6,14 @@ import {
     format,
     isToday,
     isTomorrow,
-    isThisWeek,
     addWeeks,
     startOfDay,
     endOfDay,
-    isBefore,
-    isAfter
+    isBefore
 } from 'date-fns';
 import { EventCard } from '../EventCard';
 import { sortEventsByTime } from '@/types/calendar';
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 
 interface EventGroup {
     label: string;
@@ -26,29 +24,19 @@ interface EventGroup {
 export function AgendaView() {
     const { selectedDate, filteredEvents } = useCalendar();
 
-    // Group events by time period
     const groupEvents = (): EventGroup[] => {
         const groups: EventGroup[] = [];
         const anchorDate = startOfDay(selectedDate);
-        console.log('[AgendaView] selectedDate:', selectedDate.toISOString(), 'anchorDate:', anchorDate.toISOString());
-
-        const actualToday = startOfDay(new Date());
-
-        // Use anchorDate for grouping logic, typically Agenda shows next 2 weeks from selected date
         const endDate = endOfDay(addWeeks(anchorDate, 2));
 
-        // Sort all events by start date
         const sortedEvents = [...filteredEvents].sort(
             (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
         );
-        console.log('[AgendaView] Total sorted events:', sortedEvents.length);
 
-        // Filter out past events (relative to selected date)
         const upcomingEvents = sortedEvents.filter(
             event => !isBefore(endOfDay(new Date(event.start)), anchorDate)
         );
 
-        // Group by date
         const eventsByDate = new Map<string, typeof upcomingEvents>();
         upcomingEvents.forEach(event => {
             const dateKey = format(new Date(event.start), 'yyyy-MM-dd');
@@ -58,7 +46,6 @@ export function AgendaView() {
             eventsByDate.get(dateKey)!.push(event);
         });
 
-        // Create groups
         eventsByDate.forEach((events, dateKey) => {
             const date = new Date(dateKey);
             let label: string;
@@ -68,10 +55,8 @@ export function AgendaView() {
             } else if (isTomorrow(date)) {
                 label = '🌅 Tomorrow';
             } else if (isBefore(date, addWeeks(startOfDay(new Date()), 1))) {
-                // If within this current real week, show Day Name
                 label = format(date, 'EEEE');
             } else {
-                // Otherwise full date
                 label = format(date, 'EEEE, MMMM d');
             }
 
@@ -89,12 +74,12 @@ export function AgendaView() {
 
     if (eventGroups.length === 0) {
         return (
-            <div className="h-full flex flex-col items-center justify-center text-center p-8">
-                <div className="w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center mb-4">
-                    <Calendar className="w-10 h-10 text-zinc-600" />
+            <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-white">
+                <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+                    <Calendar className="w-10 h-10 text-slate-400" />
                 </div>
-                <h3 className="text-xl font-semibold text-zinc-300 mb-2">No upcoming events</h3>
-                <p className="text-zinc-500 max-w-sm">
+                <h3 className="text-xl font-semibold text-slate-700 mb-2">No upcoming events</h3>
+                <p className="text-slate-500 max-w-sm">
                     Your schedule is clear! Tap the + button to add a new event.
                 </p>
             </div>
@@ -102,40 +87,40 @@ export function AgendaView() {
     }
 
     return (
-        <div className="h-full overflow-y-auto p-4">
+        <div className="h-full overflow-y-auto p-4 bg-white">
             <div className="max-w-2xl mx-auto space-y-6">
                 {eventGroups.map((group, groupIndex) => (
                     <div key={groupIndex}>
                         {/* Group header */}
                         <div className={`
-              sticky top-0 z-10 py-2 px-3 rounded-lg mb-3 backdrop-blur-sm
-              ${group.isToday
-                                ? 'bg-purple-600/20 text-purple-300'
-                                : 'bg-zinc-800/80 text-zinc-400'
+                            sticky top-0 z-10 py-2 px-4 rounded-xl mb-3 backdrop-blur-sm
+                            ${group.isToday
+                                ? 'bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700'
+                                : 'bg-slate-100 text-slate-600'
                             }
-            `}>
+                        `}>
                             <h3 className="text-sm font-semibold">{group.label}</h3>
                         </div>
 
                         {/* Events */}
-                        <div className="space-y-2 pl-2">
+                        <div className="space-y-3 pl-2">
                             {group.events.map(event => (
                                 <div
                                     key={event.id}
                                     className="flex gap-4 group"
                                 >
                                     {/* Time column */}
-                                    <div className="w-20 flex-shrink-0 pt-2 text-right">
+                                    <div className="w-20 flex-shrink-0 pt-3 text-right">
                                         {event.isAllDay ? (
-                                            <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded">
+                                            <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded-md font-medium">
                                                 All day
                                             </span>
                                         ) : (
                                             <div>
-                                                <div className="text-sm font-medium text-zinc-300">
+                                                <div className="text-sm font-semibold text-slate-700">
                                                     {format(new Date(event.start), 'h:mm a')}
                                                 </div>
-                                                <div className="text-xs text-zinc-500">
+                                                <div className="text-xs text-slate-400">
                                                     {format(new Date(event.end), 'h:mm a')}
                                                 </div>
                                             </div>

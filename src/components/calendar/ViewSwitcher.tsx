@@ -47,51 +47,41 @@ export function ViewSwitcher() {
     };
 
     return (
-        <div className="flex items-center justify-between gap-4">
-            {/* Left: Navigation & Date */}
-            <div className="flex items-center gap-3">
-                {/* Today button */}
+        <div className="flex items-center gap-3">
+            {/* Navigation */}
+            <div className="flex items-center gap-1">
+                <button
+                    onClick={navigatePrev}
+                    className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
+                >
+                    <ChevronLeft className="w-5 h-5" />
+                </button>
                 <button
                     onClick={goToToday}
                     className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${isToday(selectedDate)
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                            ? 'bg-gradient-to-r from-orange-400 to-amber-400 text-white shadow-sm'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                         }`}
                 >
                     Today
                 </button>
-
-                {/* Prev/Next */}
-                <div className="flex items-center gap-1">
-                    <button
-                        onClick={navigatePrev}
-                        className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
-                    >
-                        <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <button
-                        onClick={navigateNext}
-                        className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
-                    >
-                        <ChevronRight className="w-5 h-5" />
-                    </button>
-                </div>
-
-                {/* Date Label */}
-                <h2 className="text-lg font-semibold text-white">
-                    {getDateLabel()}
-                </h2>
+                <button
+                    onClick={navigateNext}
+                    className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
+                >
+                    <ChevronRight className="w-5 h-5" />
+                </button>
             </div>
 
-            {/* Right: View Switcher */}
-            <div className="flex items-center gap-1 bg-zinc-800/50 rounded-xl p-1">
+            {/* View Switcher Pills */}
+            <div className="flex items-center gap-0.5 bg-slate-100 rounded-xl p-1">
                 {VIEW_OPTIONS.map(option => (
                     <button
                         key={option.id}
                         onClick={() => setView(option.id)}
-                        className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${currentView === option.id
-                            ? 'bg-purple-600 text-white shadow-lg'
-                            : 'text-zinc-400 hover:text-white hover:bg-zinc-700/50'
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${currentView === option.id
+                                ? 'bg-white text-slate-700 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
                             }`}
                     >
                         {option.icon}

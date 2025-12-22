@@ -11,11 +11,21 @@ interface EventCardProps {
     variant?: 'compact' | 'time' | 'full';
 }
 
+// Helper to get contrasting text color
+function getContrastColor(hex: string): string {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.5 ? '#374151' : '#ffffff';
+}
+
 export function EventCard({ event, variant = 'compact' }: EventCardProps) {
     const { calendars, familyMembers, openEventModal } = useCalendar();
 
     const calendar = calendars.find(c => c.id === event.calendarId);
-    const color = event.color || calendar?.color || '#6366f1';
+    const color = event.color || calendar?.color || '#E8B4BC';
+    const textColor = getContrastColor(color);
     const categoryIcon = CATEGORY_ICONS[event.category];
     const assignedMembers = familyMembers.filter(m => event.assignedTo.includes(m.id));
 
@@ -28,16 +38,15 @@ export function EventCard({ event, variant = 'compact' }: EventCardProps) {
         return (
             <div
                 onClick={handleClick}
-                className="group flex items-center gap-1.5 px-1.5 py-0.5 rounded text-xs cursor-pointer hover:ring-1 ring-white/20 transition-all"
-                style={{ backgroundColor: `${color}30` }}
+                className="group flex items-center gap-1.5 px-2 py-1 rounded-md text-xs cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
+                style={{
+                    backgroundColor: color,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                }}
             >
-                <div
-                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: color }}
-                />
                 <span
                     className="truncate font-medium"
-                    style={{ color }}
+                    style={{ color: textColor }}
                 >
                     {event.title}
                 </span>
@@ -49,16 +58,22 @@ export function EventCard({ event, variant = 'compact' }: EventCardProps) {
         return (
             <div
                 onClick={handleClick}
-                className="group rounded-md px-2 py-1 text-xs cursor-pointer transition-all hover:ring-1 ring-white/20"
-                style={{ backgroundColor: `${color}40` }}
+                className="group rounded-lg px-2.5 py-1.5 text-xs cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+                style={{
+                    backgroundColor: color,
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.08)'
+                }}
             >
                 <div
-                    className="font-medium truncate"
-                    style={{ color }}
+                    className="font-semibold truncate"
+                    style={{ color: textColor }}
                 >
                     {event.title}
                 </div>
-                <div className="text-zinc-400 text-[10px]">
+                <div
+                    className="text-[10px] opacity-80"
+                    style={{ color: textColor }}
+                >
                     {format(new Date(event.start), 'h:mm a')}
                 </div>
             </div>
@@ -69,34 +84,46 @@ export function EventCard({ event, variant = 'compact' }: EventCardProps) {
     return (
         <div
             onClick={handleClick}
-            className="group rounded-xl p-3 cursor-pointer transition-all hover:ring-1 ring-white/20 hover:scale-[1.01]"
-            style={{ backgroundColor: `${color}15` }}
+            className="group rounded-xl p-4 cursor-pointer transition-all duration-200 hover:scale-[1.01] hover:shadow-lg"
+            style={{
+                backgroundColor: color,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+            }}
         >
             <div className="flex items-start gap-3">
-                {/* Color bar */}
+                {/* Color indicator bar */}
                 <div
                     className="w-1 rounded-full self-stretch min-h-[40px]"
-                    style={{ backgroundColor: color }}
+                    style={{ backgroundColor: textColor, opacity: 0.3 }}
                 />
 
                 <div className="flex-1 min-w-0">
                     {/* Title row */}
                     <div className="flex items-center gap-2 mb-1">
                         <span className="text-base">{categoryIcon}</span>
-                        <h4 className="font-semibold text-zinc-100 truncate flex-1">
+                        <h4
+                            className="font-semibold truncate flex-1"
+                            style={{ color: textColor }}
+                        >
                             {event.title}
                         </h4>
                     </div>
 
                     {/* Description */}
                     {event.description && (
-                        <p className="text-sm text-zinc-400 mb-2 line-clamp-2">
+                        <p
+                            className="text-sm mb-2 line-clamp-2 opacity-80"
+                            style={{ color: textColor }}
+                        >
                             {event.description}
                         </p>
                     )}
 
                     {/* Meta row */}
-                    <div className="flex items-center gap-4 text-xs text-zinc-500">
+                    <div
+                        className="flex items-center gap-4 text-xs opacity-75"
+                        style={{ color: textColor }}
+                    >
                         {/* Time */}
                         {!event.isAllDay && (
                             <span>
@@ -115,19 +142,21 @@ export function EventCard({ event, variant = 'compact' }: EventCardProps) {
 
                     {/* Assigned members */}
                     {assignedMembers.length > 0 && (
-                        <div className="flex items-center gap-1 mt-2">
+                        <div className="flex items-center gap-1.5 mt-3">
                             {assignedMembers.slice(0, 4).map(member => (
                                 <div
                                     key={member.id}
-                                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs"
-                                    style={{ backgroundColor: `${member.color}30` }}
+                                    className="w-7 h-7 rounded-full flex items-center justify-center text-sm bg-white/30 shadow-sm"
                                     title={member.name}
                                 >
                                     {member.avatar}
                                 </div>
                             ))}
                             {assignedMembers.length > 4 && (
-                                <div className="w-6 h-6 rounded-full bg-zinc-700 flex items-center justify-center text-xs text-zinc-400">
+                                <div
+                                    className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-xs font-medium"
+                                    style={{ color: textColor }}
+                                >
                                     +{assignedMembers.length - 4}
                                 </div>
                             )}
