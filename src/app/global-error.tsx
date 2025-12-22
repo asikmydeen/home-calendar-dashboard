@@ -12,15 +12,9 @@ export default function GlobalError({
     return (
         <html>
             <body>
-                <div style={{ padding: '20px', fontFamily: 'system-ui, sans-serif' }}>
-                    <h2>Something went wrong!</h2>
-                    <p>{error?.message || 'Unknown error'}</p>
-                    <button
-                        onClick={() => reset()}
-                        style={{ padding: '10px 20px', cursor: 'pointer' }}
-                    >
-                        Try again
-                    </button>
+                <div style={{ padding: '20px', fontFamily: 'system-ui' }}>
+                    <h2>Application Error</h2>
+                    <button onClick={() => reset()}>Try again</button>
                 </div>
             </body>
         </html>
