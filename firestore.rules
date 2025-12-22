@@ -13,14 +13,13 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Dashboards: Only owner can access
-    match /dashboards/{dashboardId} {
-      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
-      allow read, update, delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+    // Dashboards: document ID is the user's UID (same pattern as households)
+    match /dashboards/{userId} {
+      allow read, write: if isOwner(userId);
       
       // Frames subcollection
       match /frames/{frameId} {
-        allow read, write: if isAuthenticated() && get(/databases/$(database)/documents/dashboards/$(dashboardId)).data.ownerId == request.auth.uid;
+        allow read, write: if isOwner(userId);
       }
     }
 

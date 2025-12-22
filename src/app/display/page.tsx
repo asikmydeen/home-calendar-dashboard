@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { functions } from '@/lib/firebase';
 import { httpsCallable } from 'firebase/functions';
@@ -21,7 +21,7 @@ const FONT_CLASSES: Record<string, string> = {
     'jetbrains-mono': 'font-mono',
 };
 
-export default function DisplayPage() {
+function DisplayPageContent() {
     const searchParams = useSearchParams();
     const displayId = searchParams.get('id');
 
@@ -144,5 +144,17 @@ export default function DisplayPage() {
                 isEditMode={false}
             />
         </main>
+    );
+}
+
+export default function DisplayPage() {
+    return (
+        <Suspense fallback={
+            <div className="h-screen w-screen flex items-center justify-center bg-zinc-950 text-zinc-400">
+                <Loader2 className="w-8 h-8 animate-spin" />
+            </div>
+        }>
+            <DisplayPageContent />
+        </Suspense>
     );
 }
