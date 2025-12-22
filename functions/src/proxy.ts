@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
-    const { searchParams } = new URL(request.url);
-    const url = searchParams.get('url');
+import { onRequest } from "firebase-functions/v2/https";
+import * as logger from "firebase-functions/logger";
+
+export const proxyUrl = onRequest({ cors: true }, async (request, response) => {
+    const url = request.query.url as string;
 
     if (!url) {
-        return NextResponse.json({ error: 'URL parameter is required' }, { status: 400 });
+        response.status(400).json({ error: 'URL parameter is required' });
+        return;
     }
 
     try {
@@ -13,7 +15,7 @@ export async function GET(request: NextRequest) {
         const targetUrl = new URL(url);
 
         // Fetch the page content
-        const response = await fetch(targetUrl.toString(), {
+        const fetchResponse = await fetch(targetUrl.toString(), {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -21,8 +23,8 @@ export async function GET(request: NextRequest) {
             },
         });
 
-        const contentType = response.headers.get('content-type') || 'text/html';
-        const content = await response.text();
+        const contentType = fetchResponse.headers.get('content-type') || 'text/html';
+        const content = await fetchResponse.text();
 
         // Modify the HTML to fix relative URLs and inject base tag
         let modifiedContent = content;
@@ -42,18 +44,13 @@ export async function GET(request: NextRequest) {
             modifiedContent = modifiedContent.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
         }
 
-        // Return the content without X-Frame-Options
-        return new NextResponse(modifiedContent, {
-            headers: {
-                'Content-Type': contentType,
-                'Cache-Control': 'public, max-age=300', // Cache for 5 minutes
-            },
-        });
-    } catch (error) {
-        console.error('Proxy error:', error);
-        return NextResponse.json(
-            { error: 'Failed to fetch the URL. The website may not be accessible.' },
-            { status: 500 }
-        );
+        // Return the content
+        response.set('Content-Type', contentType);
+        response.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
+        response.send(modifiedContent);
+
+    } catch (error: any) {
+        logger.error('Proxy error:', error);
+        response.status(500).json({ error: 'Failed to fetch the URL. The website may not be accessible.' });
     }
-}
+});

@@ -505,8 +505,9 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
                     // Attempt primary if single account? 
                 }
 
+                const actualCalendarId = event.calendarId.startsWith('google-primary-') ? 'primary' : event.calendarId;
                 const { updateEvent } = await import('@/lib/googleCalendar');
-                await updateEvent(googleId, event, event.calendarId, accountId);
+                await updateEvent(googleId, event, actualCalendarId, accountId);
             } catch (error) {
                 console.error('Failed to update Google event:', error);
                 // Rollback? Complicated without undo stack.
@@ -543,8 +544,9 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
                     googleId = parts[1];
                 }
 
+                const actualCalendarId = event.calendarId.startsWith('google-primary-') ? 'primary' : event.calendarId;
                 const { deleteEvent } = await import('@/lib/googleCalendar');
-                await deleteEvent(googleId, event.calendarId, accountId);
+                await deleteEvent(googleId, actualCalendarId, accountId);
             } catch (error: any) {
                 console.error('Failed to delete Google event:', error);
 

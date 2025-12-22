@@ -6,7 +6,7 @@ import { CalendarProvider } from "@/contexts/CalendarContext";
 import { HouseholdProvider } from "@/contexts/HouseholdContext";
 import { AccountsProvider } from "@/contexts/AccountsContext";
 
-export const dynamic = 'force-dynamic';
+
 
 const inter = Inter({ subsets: ["latin"] });
 

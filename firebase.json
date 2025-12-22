@@ -25,6 +25,12 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/api/proxy",
+        "function": "proxyUrl"
+      }
     ]
   },
   "storage": {
