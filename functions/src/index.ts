@@ -8,6 +8,7 @@ admin.initializeApp();
 export * from "./oauth";
 export * from "./calendar";
 export * from "./proxy";
+export * from "./displays";
 
 // Health check function
 export const helloWorld = onCall((request) => {

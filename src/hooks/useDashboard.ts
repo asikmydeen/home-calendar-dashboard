@@ -102,7 +102,7 @@ function loadCurrentPageIndex(): number {
 }
 
 export function useDashboard(dashboardId?: string) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [dashboard, setDashboard] = useState<DashboardLayout | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -111,37 +111,88 @@ export function useDashboard(dashboardId?: string) {
   // Debounce timer ref
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load dashboard on mount
+  // Load dashboard on mount / auth change
   useEffect(() => {
-    const loadDashboard = () => {
-      // Try localStorage first
-      const stored = loadFromLocalStorage();
+    if (authLoading) return;
 
-      if (stored) {
-        setDashboard(stored);
-        const savedPageIndex = loadCurrentPageIndex();
-        setCurrentPageIndex(Math.min(savedPageIndex, stored.pages.length - 1));
+    let unsubscribe: (() => void) | null = null;
+
+    const initDashboard = async () => {
+      setLoading(true);
+
+      if (user) {
+        // --- Authenticated Mode: Firestore ---
+        const dashboardRef = doc(db, 'dashboards', user.uid);
+
+        unsubscribe = onSnapshot(dashboardRef, async (docSnap) => {
+          if (docSnap.exists()) {
+            // Dashboard exists in Firestore
+            const data = docSnap.data() as DashboardLayout;
+            setDashboard(data);
+
+            // Restore current page index from local preference if possible, otherwise 0
+            const savedPageIndex = loadCurrentPageIndex();
+            setCurrentPageIndex(Math.min(savedPageIndex, data.pages.length - 1));
+          } else {
+            // Dashboard does NOT exist in Firestore
+            // Check for local data to migrate
+            const localData = loadFromLocalStorage();
+            let initialDashboard: DashboardLayout;
+
+            if (localData) {
+              // MIGRATION: Use local data
+              initialDashboard = { ...localData, ownerId: user.uid, updatedAt: Date.now() };
+              console.log('Migrating local dashboard to Firestore...');
+            } else {
+              // Create default
+              initialDashboard = createDefaultDashboard();
+              initialDashboard.ownerId = user.uid;
+            }
+
+            // Save to Firestore
+            try {
+              await setDoc(dashboardRef, initialDashboard);
+              // The onSnapshot will fire again with this data, so we don't strictly need to setDashboard here,
+              // but it feels more responsive to do so if we weren't depending on the listener immediate callback.
+              // However, Firestore listeners usually fire immediately with local pending writes.
+            } catch (err) {
+              console.error("Error creating initial dashboard in Firestore:", err);
+              setError("Failed to create dashboard.");
+            }
+          }
+          setLoading(false);
+        }, (err) => {
+          console.error("Firestore subscription error:", err);
+          setError(err.message);
+          setLoading(false);
+        });
+
       } else {
-        // Create default dashboard
-        const defaultDashboard = createDefaultDashboard();
-        if (user) {
-          defaultDashboard.ownerId = user.uid;
+        // --- Guest Mode: LocalStorage ---
+        const stored = loadFromLocalStorage();
+        if (stored) {
+          setDashboard(stored);
+          const savedPageIndex = loadCurrentPageIndex();
+          setCurrentPageIndex(Math.min(savedPageIndex, stored.pages.length - 1));
+        } else {
+          const defaultDashboard = createDefaultDashboard();
+          setDashboard(defaultDashboard);
+          saveToLocalStorage(defaultDashboard);
         }
-        setDashboard(defaultDashboard);
-        saveToLocalStorage(defaultDashboard);
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
-    // Small delay to ensure client-side hydration
-    const timer = setTimeout(loadDashboard, 100);
-    return () => clearTimeout(timer);
-  }, [user]);
+    initDashboard();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [user, authLoading]);
 
   // Save dashboard whenever it changes (debounced)
   useEffect(() => {
-    if (!dashboard) return;
+    if (!dashboard || loading) return;
 
     // Clear existing timer
     if (saveTimerRef.current) {
@@ -149,8 +200,24 @@ export function useDashboard(dashboardId?: string) {
     }
 
     // Debounce save by 500ms
-    saveTimerRef.current = setTimeout(() => {
-      saveToLocalStorage(dashboard);
+    saveTimerRef.current = setTimeout(async () => {
+      if (user) {
+        // Save to Firestore
+        try {
+          const dashboardRef = doc(db, 'dashboards', user.uid);
+          // We use setDoc with merge or just overwrite. Since we hold the whole state, overwrite is safer for consistency
+          // unless we want to patch partials. For now, full overwrite is fine for this app scale.
+          await setDoc(dashboardRef, {
+            ...dashboard,
+            updatedAt: Date.now()
+          });
+        } catch (err) {
+          console.error("Error saving to Firestore:", err);
+        }
+      } else {
+        // Save to LocalStorage
+        saveToLocalStorage(dashboard);
+      }
     }, 500);
 
     return () => {
@@ -158,7 +225,7 @@ export function useDashboard(dashboardId?: string) {
         clearTimeout(saveTimerRef.current);
       }
     };
-  }, [dashboard]);
+  }, [dashboard, user, loading]);
 
   // Get current page
   const currentPage = dashboard?.pages[currentPageIndex] || null;
@@ -169,7 +236,8 @@ export function useDashboard(dashboardId?: string) {
     const clampedIndex = Math.max(0, Math.min(index, dashboard.pages.length - 1));
     setCurrentPageIndex(clampedIndex);
     saveCurrentPageIndex(clampedIndex);
-    setDashboard(prev => prev ? { ...prev, currentPageIndex: clampedIndex } : null);
+    // Note: We don't save page index to Firestore as it's a transient UI state usually 
+    // unless we want it synchronized across devices. For now, keeping it local.
   }, [dashboard]);
 
   const nextPage = useCallback(() => {
@@ -191,12 +259,11 @@ export function useDashboard(dashboardId?: string) {
         ...updatedPages[currentPageIndex],
         frames
       };
-      const updated = {
+      return {
         ...prev,
         pages: updatedPages,
         updatedAt: Date.now()
       };
-      return updated;
     });
   }, [currentPageIndex]);
 
@@ -267,8 +334,6 @@ export function useDashboard(dashboardId?: string) {
       const defaults = getWidgetDefaults(type);
 
       // Always place new modules at (0, 0) - top-left corner
-      // This ensures they're ALWAYS visible and the user can move them
-      // Overlapping is allowed, user will resize/reposition as needed
       const newFrame: Frame = {
         id: crypto.randomUUID(),
         type: type as Frame['type'],
@@ -339,8 +404,11 @@ export function useDashboard(dashboardId?: string) {
       if (!prev || prev.pages.length <= 1) return prev; // Keep at least one page
       const newPages = prev.pages.filter(p => p.id !== pageId);
       const newIndex = Math.min(currentPageIndex, newPages.length - 1);
+
+      // Update local state navigation immediately for better UX
       setCurrentPageIndex(newIndex);
       saveCurrentPageIndex(newIndex);
+
       return { ...prev, pages: newPages, currentPageIndex: newIndex, updatedAt: Date.now() };
     });
   }, [currentPageIndex]);
@@ -368,7 +436,7 @@ export function useDashboard(dashboardId?: string) {
       const frame = prev.pages[currentPageIndex].frames.find(f => f.id === frameId);
       if (!frame) return prev;
 
-      // Calculate new position for the target page (find bottom of existing widgets)
+      // Calculate new position for the target page
       const targetPageFrames = prev.pages[targetPageIndex].frames;
       let maxBottomY = 0;
       targetPageFrames.forEach(f => {
@@ -376,7 +444,7 @@ export function useDashboard(dashboardId?: string) {
         if (bottomY > maxBottomY) maxBottomY = bottomY;
       });
 
-      // Create moved frame with new position
+      // Create moved frame
       const movedFrame: Frame = {
         ...frame,
         x: 0,
@@ -384,17 +452,15 @@ export function useDashboard(dashboardId?: string) {
         layouts: {} // Reset breakpoint layouts for new page
       };
 
-      // Update pages: remove from current, add to target
+      // Update pages
       const updatedPages = prev.pages.map((page, idx) => {
         if (idx === currentPageIndex) {
-          // Remove from current page
           return {
             ...page,
             frames: page.frames.filter(f => f.id !== frameId)
           };
         }
         if (idx === targetPageIndex) {
-          // Add to target page
           return {
             ...page,
             frames: [...page.frames, movedFrame]
@@ -414,16 +480,19 @@ export function useDashboard(dashboardId?: string) {
     goToPage(targetPageIndex);
   }, [currentPageIndex, goToPage]);
 
-  // Reset dashboard to default
-  const resetDashboard = useCallback(() => {
+  // Reset dashboard
+  const resetDashboard = useCallback(async () => {
     const defaultDashboard = createDefaultDashboard();
     if (user) {
       defaultDashboard.ownerId = user.uid;
+      // In Firestore mode, we'll let the debounce or an explicit setDoc handle this
+      setDashboard(defaultDashboard);
+    } else {
+      setDashboard(defaultDashboard);
+      saveToLocalStorage(defaultDashboard);
     }
-    setDashboard(defaultDashboard);
     setCurrentPageIndex(0);
     saveCurrentPageIndex(0);
-    saveToLocalStorage(defaultDashboard);
   }, [user]);
 
   return {
@@ -437,7 +506,7 @@ export function useDashboard(dashboardId?: string) {
     goToPage,
     nextPage,
     prevPage,
-    // Frame operations (current page)
+    // Frame operations
     updateFrames,
     updateFramesWithLayouts,
     addFrame,
