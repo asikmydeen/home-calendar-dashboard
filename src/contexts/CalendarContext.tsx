@@ -14,6 +14,7 @@ import {
 } from '@/types/calendar';
 import { RRule } from 'rrule';
 
+import { useAuth } from './AuthContext';
 import { useHousehold } from './HouseholdContext';
 import { useAccounts } from './AccountsContext';
 
@@ -216,6 +217,7 @@ interface CalendarProviderProps {
 
 export function CalendarProvider({ children }: CalendarProviderProps) {
     const [state, dispatch] = useReducer(calendarReducer, initialState);
+    const { user, loading: authLoading } = useAuth();
     const { familyMembers } = useHousehold();
     const { accounts } = useAccounts();
 
@@ -254,6 +256,8 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
         let isMounted = true;
 
         const fetchExternalEvents = async () => {
+            // Don't fetch if auth is still loading or user is not logged in
+            if (authLoading || !user) return;
             if (!accounts.length) return;
 
             // Determine date range based on view
@@ -332,7 +336,7 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
         return () => {
             isMounted = false;
         };
-    }, [accounts, state.selectedDate]); // Re-fetch when accounts or date changes
+    }, [accounts, state.selectedDate, user, authLoading]); // Re-fetch when accounts, date, or auth changes
 
     // Save events to localStorage on change
     useEffect(() => {

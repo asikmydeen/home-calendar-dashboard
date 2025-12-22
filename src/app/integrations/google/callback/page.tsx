@@ -45,7 +45,7 @@ function GoogleCallbackContent() {
           if (isPopup) {
             window.close();
           } else {
-            router.push('/');
+            router.push('/app');
           }
         }, 1500);
       } catch (error) {
@@ -88,7 +88,7 @@ function GoogleCallbackContent() {
                 if (isPopup) {
                   window.close();
                 } else {
-                  router.push('/');
+                  router.push('/app');
                 }
               }}
               className="mt-6 w-full py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-lg transition-colors"

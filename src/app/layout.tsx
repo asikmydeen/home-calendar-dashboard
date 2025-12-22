@@ -11,8 +11,8 @@ import { AccountsProvider } from "@/contexts/AccountsContext";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Home Dashboard",
-  description: "A smart home dashboard for your wall",
+  title: "PersonalPod - Your Personal Command Center",
+  description: "Your family's digital hub. Calendars, widgets, and more—unified in one beautiful display for wall-mounted tablets, smart TVs, or any screen.",
 };
 
 export default function RootLayout({

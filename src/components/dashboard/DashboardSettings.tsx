@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { DashboardTheme, DashboardLayout, DEFAULT_THEME, OverlayEffect } from '@/types/dashboard';
-import { X, Palette, Type, Sparkles, Image, Users } from 'lucide-react';
+import { X, Palette, Type, Sparkles, Image, Users, Monitor, ExternalLink } from 'lucide-react';
 import { HouseholdSettings } from './HouseholdSettings';
 
 const OVERLAY_OPTIONS: { id: OverlayEffect; label: string; emoji: string }[] = [
@@ -49,6 +50,7 @@ const WIDGET_STYLES = [
 ];
 
 export default function DashboardSettings({ dashboard, isOpen, onClose, onSave }: DashboardSettingsProps) {
+    const router = useRouter();
     const [theme, setTheme] = useState<DashboardTheme>(dashboard.theme || DEFAULT_THEME);
     const [activeTab, setActiveTab] = useState<'background' | 'font' | 'widgets' | 'household'>('background');
     const [customImageUrl, setCustomImageUrl] = useState('');
@@ -268,19 +270,31 @@ export default function DashboardSettings({ dashboard, isOpen, onClose, onSave }
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-zinc-700 bg-zinc-800/50">
+                <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-700 bg-zinc-800/50">
+                    {/* Console Link */}
                     <button
-                        onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-700 rounded-lg transition-colors"
+                        onClick={() => { onClose(); router.push('/app/console'); }}
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg transition-colors"
                     >
-                        Cancel
+                        <Monitor className="w-4 h-4" />
+                        <span>Display Management</span>
+                        <ExternalLink className="w-3 h-3" />
                     </button>
-                    <button
-                        onClick={() => { onSave(theme); onClose(); }}
-                        className="px-6 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
-                    >
-                        Save Changes
-                    </button>
+                    
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-700 rounded-lg transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={() => { onSave(theme); onClose(); }}
+                            className="px-6 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+                        >
+                            Save Changes
+                        </button>
+                    </div>
                 </div>
             </div>
 

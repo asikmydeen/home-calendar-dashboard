@@ -38,7 +38,7 @@ interface AccountsContextType extends AccountsState {
 const AccountsContext = createContext<AccountsContextType | undefined>(undefined);
 
 export function AccountsProvider({ children }: { children: ReactNode }) {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const { familyMembers, updateMember } = useHousehold();
 
     const [state, setState] = useState<AccountsState>({
@@ -56,6 +56,9 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
 
     // Listen to Firestore for connected accounts
     useEffect(() => {
+        // Don't do anything while auth is still loading
+        if (authLoading) return;
+        
         if (!user) {
             setState(prev => ({ ...prev, accounts: [], isLoading: false }));
             setRawAccounts([]);
@@ -98,7 +101,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         return () => {
             unsubscribe?.();
         };
-    }, [user]);
+    }, [user, authLoading]);
 
     // Derive connected accounts whenever raw data OR family members change
     useEffect(() => {

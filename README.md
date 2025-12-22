@@ -1,6 +1,8 @@
-# Home Calendar Dashboard
+# PersonalPod
 
-A production-quality dashboard for Raspberry Pi / Wall Displays, built with Next.js, Firebase, and Bun.
+Your personal command center—a production-quality dashboard for Raspberry Pi / Wall Displays, built with Next.js, Firebase, and Bun.
+
+**Website:** [PersonalPod.space](https://personalpod.space)
 
 ## Features
 - **Draggable/Resizable Grid**: Customize your layout exactly how you want it.
