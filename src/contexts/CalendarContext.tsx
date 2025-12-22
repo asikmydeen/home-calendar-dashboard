@@ -345,8 +345,11 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
     }, [state.events, state.isLoading]);
 
     // Sync members and auto-generate calendars
+    // NOTE: We now only show Member calendars (Dad, Mom, etc.) + Family
+    // Google accounts are NOT shown as separate calendars - their events are 
+    // attributed to the member they're linked to via assignedTo field
     useEffect(() => {
-        // Generate personal calendars for members
+        // Generate personal calendars for members only
         const memberCalendars: Calendar[] = familyMembers.map((m: FamilyMember) => {
             return {
                 id: `cal-${m.id}`,
@@ -359,22 +362,13 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
             };
         });
 
-        // Add connected external calendars from accounts
-        // Currently mapping 1:1 Account -> Primary Calendar
-        const externalCalendars: Calendar[] = accounts.map(acc => ({
-            id: `google-primary-${acc.accountId}`,
-            name: `${acc.displayName} (Google)`,
-            color: '#4285F4', // Default Google Blue
-            isVisible: true,
-            type: 'personal',
-            source: 'google',
-            ownerId: acc.linkedMemberId,
-            isFamilyShared: true // connected accounts are shared by default in this household model
-        }));
-
-        // For now merge defaults
+        // Family calendar as the unified view
         const familyCal = DEFAULT_CALENDARS.find(c => c.type === 'family')!;
-        const newCalendars = [familyCal, ...memberCalendars, ...externalCalendars];
+        const newCalendars = [familyCal, ...memberCalendars];
+
+        // We still need to track Google calendar IDs internally for event routing
+        // but we don't expose them as visible "calendars" in the UI
+        // Instead, those events will be filtered by assignedTo
 
         const currentCalIds = state.calendars.map(c => c.id).sort().join(',');
         const newCalIds = newCalendars.map(c => c.id).sort().join(',');
@@ -648,14 +642,37 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
     }, [state.events, state.selectedDate]);
 
     const filteredEvents = expandedEvents.filter(event => {
-        if (!state.visibleCalendarIds.includes(event.calendarId)) {
+        // For Google events (calendarId starts with 'google-'), determine visibility
+        if (event.calendarId.startsWith('google-')) {
+            // Strict check: If event has assigned members, show ONLY if their personal calendar is visible
+            if (event.assignedTo && event.assignedTo.length > 0) {
+                return event.assignedTo.some(memberId =>
+                    state.visibleCalendarIds.includes(`cal-${memberId}`)
+                );
+            }
+
+            // Fallback: Only for unassigned events, show if Family calendar is visible
+            if (state.visibleCalendarIds.includes('family')) {
+                return true;
+            }
+
             return false;
+        } else {
+            // For local events, use direct calendarId matching
+            if (!state.visibleCalendarIds.includes(event.calendarId)) {
+                return false;
+            }
         }
+
+        // Apply member filter if any members are selected
         if (state.selectedMemberIds.length > 0) {
-            const hasMatchingMember = event.assignedTo.some(memberId =>
-                state.selectedMemberIds.includes(memberId)
-            );
-            if (!hasMatchingMember) return false;
+            // For events with no assignments, skip member filter (show them anyway)
+            if (event.assignedTo && event.assignedTo.length > 0) {
+                const hasMatchingMember = event.assignedTo.some(memberId =>
+                    state.selectedMemberIds.includes(memberId)
+                );
+                if (!hasMatchingMember) return false;
+            }
         }
         return true;
     });
