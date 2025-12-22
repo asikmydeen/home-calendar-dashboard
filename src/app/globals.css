@@ -30,12 +30,16 @@ body {
 /* Ensure grid items don't clip resize handles */
 .react-grid-item {
   overflow: visible !important;
+  /* Fix touch-action warning - allow dragging without scroll interference */
+  touch-action: none;
 }
 
 /* Ensure grid layout container doesn't create scrolling */
 .react-grid-layout {
   overflow: visible !important;
   position: relative;
+  /* Fix touch-action warning for the grid container */
+  touch-action: none;
 }
 
 /* Base resize handle styling - HIDDEN by default */
