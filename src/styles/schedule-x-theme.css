@@ -1,0 +1,677 @@
+/**
+ * Schedule-X Custom Theme for Family Calendar Dashboard
+ * 
+ * This file contains custom CSS overrides for the Schedule-X calendar
+ * to match the family-friendly, warm aesthetic of the home dashboard.
+ */
+
+/* ============================================
+   CSS Custom Properties (Design Tokens)
+   ============================================ */
+:root {
+    /* Primary colors - Warm orange palette */
+    --family-primary: #f97316;
+    --family-primary-light: #fed7aa;
+    --family-primary-dark: #c2410c;
+    
+    /* Surface colors */
+    --family-surface: #ffffff;
+    --family-surface-variant: #fef3c7;
+    --family-background: #fffbeb;
+    
+    /* Text colors */
+    --family-on-surface: #1e293b;
+    --family-on-surface-muted: #64748b;
+    --family-on-primary: #ffffff;
+    
+    /* Member colors - these will be dynamically set per member */
+    --member-dad: #3b82f6;
+    --member-mom: #ec4899;
+    --member-child1: #10b981;
+    --member-child2: #8b5cf6;
+    --member-child3: #f59e0b;
+    
+    /* Borders and shadows */
+    --family-border: #e2e8f0;
+    --family-border-light: #f1f5f9;
+    --family-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --family-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --family-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    
+    /* Border radius */
+    --family-radius-sm: 0.375rem;
+    --family-radius-md: 0.5rem;
+    --family-radius-lg: 0.75rem;
+    --family-radius-xl: 1rem;
+    
+    /* Transitions */
+    --family-transition: all 0.2s ease;
+}
+
+/* ============================================
+   Schedule-X Base Override
+   ============================================ */
+.schedule-x-calendar-wrapper {
+    --sx-color-primary: var(--family-primary);
+    --sx-color-primary-variant: var(--family-primary-dark);
+    --sx-color-on-primary: var(--family-on-primary);
+    --sx-color-surface: var(--family-surface);
+    --sx-color-on-surface: var(--family-on-surface);
+    --sx-color-surface-variant: var(--family-surface-variant);
+    --sx-color-on-surface-variant: var(--family-on-surface-muted);
+    --sx-color-background: var(--family-background);
+    --sx-color-on-background: var(--family-on-surface);
+    --sx-border-radius: var(--family-radius-lg);
+    --sx-border-radius-small: var(--family-radius-md);
+}
+
+/* ============================================
+   Family Event Styling
+   ============================================ */
+
+/* Family event card base */
+.sx-family-event {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+/* Member avatar indicators */
+.family-member-avatars {
+    display: flex;
+    align-items: center;
+    gap: -0.25rem;
+}
+
+.family-member-avatar {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: white;
+    border: 2px solid white;
+    box-shadow: var(--family-shadow-sm);
+    transition: var(--family-transition);
+}
+
+.family-member-avatar:hover {
+    transform: scale(1.1);
+    z-index: 10;
+}
+
+.family-member-avatar--overflow {
+    background-color: #64748b;
+}
+
+/* Event category indicators */
+.event-category-badge {
+    font-size: 0.625rem;
+    padding: 0.125rem 0.375rem;
+    border-radius: var(--family-radius-sm);
+    background: rgba(0, 0, 0, 0.1);
+    color: inherit;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+/* Event location */
+.event-location {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.625rem;
+    color: var(--family-on-surface-muted);
+    overflow: hidden;
+}
+
+.event-location-icon {
+    flex-shrink: 0;
+}
+
+.event-location-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ============================================
+   Member-Specific Event Colors
+   ============================================ */
+
+/* Dad's events */
+.sx-event[data-member="dad"],
+.sx-event[data-calendar-id="parent1"] {
+    --event-color: var(--member-dad);
+    border-left-color: var(--member-dad);
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+}
+
+/* Mom's events */
+.sx-event[data-member="mom"],
+.sx-event[data-calendar-id="parent2"] {
+    --event-color: var(--member-mom);
+    border-left-color: var(--member-mom);
+    background: linear-gradient(135deg, #fce7f3, #fbcfe8);
+}
+
+/* Child 1's events */
+.sx-event[data-member="child1"],
+.sx-event[data-calendar-id="child1"] {
+    --event-color: var(--member-child1);
+    border-left-color: var(--member-child1);
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+}
+
+/* Child 2's events */
+.sx-event[data-member="child2"],
+.sx-event[data-calendar-id="child2"] {
+    --event-color: var(--member-child2);
+    border-left-color: var(--member-child2);
+    background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+}
+
+/* Family events (multiple members) */
+.sx-event[data-calendar-id="family"] {
+    --event-color: var(--family-primary);
+    border-left-color: var(--family-primary);
+    background: linear-gradient(135deg, #ffedd5, #fed7aa);
+}
+
+/* ============================================
+   All-Day Events
+   ============================================ */
+.sx-event--all-day {
+    border-radius: var(--family-radius-sm);
+    padding: 0.25rem 0.5rem;
+    font-weight: 500;
+}
+
+.sx-event--all-day .sx-family-event {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* ============================================
+   Event Interactions
+   ============================================ */
+
+/* Hover state */
+.sx-event:hover {
+    box-shadow: var(--family-shadow-md);
+    transform: translateY(-1px);
+}
+
+/* Focus state (accessibility) */
+.sx-event:focus {
+    outline: 2px solid var(--family-primary);
+    outline-offset: 2px;
+}
+
+/* Dragging state */
+.sx-event--is-dragging {
+    opacity: 0.85;
+    transform: scale(1.02) rotate(1deg);
+    box-shadow: var(--family-shadow-lg);
+    cursor: grabbing;
+}
+
+/* Resizing state */
+.sx-event--is-resizing {
+    opacity: 0.9;
+    box-shadow: var(--family-shadow-md);
+}
+
+/* ============================================
+   Time Grid Enhancements
+   ============================================ */
+
+/* Current time indicator */
+.sx-time-grid__current-time-indicator {
+    background: var(--family-primary);
+    height: 2px;
+    position: relative;
+}
+
+.sx-time-grid__current-time-indicator::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 10px;
+    height: 10px;
+    background: var(--family-primary);
+    border-radius: 50%;
+}
+
+/* Hour markers */
+.sx-time-grid__time-axis-time {
+    font-size: 0.7rem;
+    color: var(--family-on-surface-muted);
+    font-weight: 500;
+}
+
+/* Grid lines */
+.sx-time-grid__day {
+    border-color: var(--family-border-light);
+}
+
+.sx-time-grid__day:hover {
+    background: rgba(249, 115, 22, 0.02);
+}
+
+/* ============================================
+   Month Grid Enhancements
+   ============================================ */
+
+/* Day cells */
+.sx-month-grid__day {
+    min-height: 100px;
+    transition: var(--family-transition);
+}
+
+.sx-month-grid__day:hover {
+    background: var(--family-surface-variant);
+}
+
+/* Today highlight */
+.sx-month-grid__day--is-today {
+    background: linear-gradient(135deg, #fff7ed, #ffedd5);
+}
+
+.sx-month-grid__day--is-today .sx-month-grid__day-date {
+    background: var(--family-primary);
+    color: white;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Weekend days */
+.sx-month-grid__day--is-weekend {
+    background: rgba(0, 0, 0, 0.01);
+}
+
+/* Outside month days */
+.sx-month-grid__day--is-outside-month {
+    opacity: 0.4;
+}
+
+/* More events button */
+.sx-month-grid__more-events {
+    color: var(--family-primary);
+    font-weight: 600;
+    font-size: 0.7rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--family-radius-sm);
+    cursor: pointer;
+    transition: var(--family-transition);
+}
+
+.sx-month-grid__more-events:hover {
+    background: var(--family-primary-light);
+}
+
+/* ============================================
+   Week/Day Header
+   ============================================ */
+
+.sx-day-header {
+    background: linear-gradient(to bottom, #fefce8, #fef3c7);
+    border-bottom: 1px solid #fde68a;
+    padding: 0.75rem;
+}
+
+.sx-day-header__day-name {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--family-on-surface-muted);
+    font-weight: 500;
+}
+
+.sx-day-header__day-number {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--family-on-surface);
+}
+
+.sx-day-header--is-today .sx-day-header__day-number {
+    color: var(--family-primary);
+}
+
+/* ============================================
+   Calendar Navigation
+   ============================================ */
+
+.sx-calendar-header {
+    background: linear-gradient(to right, #fffbeb, #fff7ed);
+    border-bottom: 1px solid #fde68a;
+    padding: 1rem;
+    border-radius: var(--family-radius-lg) var(--family-radius-lg) 0 0;
+}
+
+.sx-calendar-header__date-text {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--family-on-surface);
+}
+
+.sx-calendar-header__btn {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: var(--family-radius-md);
+    background: white;
+    border: 1px solid var(--family-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--family-transition);
+    cursor: pointer;
+}
+
+.sx-calendar-header__btn:hover {
+    background: var(--family-primary);
+    color: white;
+    border-color: var(--family-primary);
+}
+
+.sx-calendar-header__btn:focus {
+    outline: 2px solid var(--family-primary);
+    outline-offset: 2px;
+}
+
+/* ============================================
+   View Selector
+   ============================================ */
+
+.sx-view-selector {
+    display: flex;
+    background: white;
+    border-radius: var(--family-radius-md);
+    border: 1px solid var(--family-border);
+    overflow: hidden;
+}
+
+.sx-view-selector__btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--family-on-surface-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: var(--family-transition);
+}
+
+.sx-view-selector__btn:hover {
+    background: var(--family-surface-variant);
+    color: var(--family-on-surface);
+}
+
+.sx-view-selector__btn--selected {
+    background: var(--family-primary);
+    color: white;
+}
+
+.sx-view-selector__btn--selected:hover {
+    background: var(--family-primary-dark);
+    color: white;
+}
+
+/* ============================================
+   Scrollbar Styling
+   ============================================ */
+
+.sx-time-grid__content::-webkit-scrollbar,
+.sx-month-grid::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.sx-time-grid__content::-webkit-scrollbar-track,
+.sx-month-grid::-webkit-scrollbar-track {
+    background: var(--family-border-light);
+    border-radius: 4px;
+}
+
+.sx-time-grid__content::-webkit-scrollbar-thumb,
+.sx-month-grid::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.sx-time-grid__content::-webkit-scrollbar-thumb:hover,
+.sx-month-grid::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* ============================================
+   Responsive Adjustments
+   ============================================ */
+
+/* Tablet */
+@media (max-width: 1024px) {
+    .sx-calendar-header__date-text {
+        font-size: 1.1rem;
+    }
+    
+    .sx-month-grid__day {
+        min-height: 80px;
+    }
+    
+    .family-member-avatar {
+        width: 1rem;
+        height: 1rem;
+        font-size: 0.5rem;
+    }
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+    .sx-calendar-header {
+        padding: 0.75rem;
+    }
+    
+    .sx-calendar-header__date-text {
+        font-size: 1rem;
+    }
+    
+    .sx-view-selector__btn {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.75rem;
+    }
+    
+    .sx-month-grid__day {
+        min-height: 60px;
+    }
+    
+    .sx-event__title {
+        font-size: 0.65rem;
+    }
+    
+    .family-member-avatar {
+        width: 0.875rem;
+        height: 0.875rem;
+        font-size: 0.45rem;
+        border-width: 1px;
+    }
+}
+
+/* ============================================
+   Dark Mode Support
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --family-surface: #1e293b;
+        --family-surface-variant: #334155;
+        --family-background: #0f172a;
+        --family-on-surface: #f8fafc;
+        --family-on-surface-muted: #94a3b8;
+        --family-border: #475569;
+        --family-border-light: #334155;
+    }
+    
+    .sx-calendar-header {
+        background: linear-gradient(to right, #1e1b4b, #312e81);
+        border-bottom-color: #4338ca;
+    }
+    
+    .sx-day-header {
+        background: linear-gradient(to bottom, #1e293b, #334155);
+        border-bottom-color: #475569;
+    }
+    
+    .sx-month-grid__day--is-today {
+        background: linear-gradient(135deg, #1e1b4b, #312e81);
+    }
+    
+    .sx-calendar-header__btn {
+        background: #334155;
+        border-color: #475569;
+        color: #f8fafc;
+    }
+    
+    .sx-calendar-header__btn:hover {
+        background: var(--family-primary);
+        border-color: var(--family-primary);
+    }
+    
+    .sx-view-selector {
+        background: #334155;
+        border-color: #475569;
+    }
+    
+    .sx-view-selector__btn {
+        color: #94a3b8;
+    }
+    
+    .sx-view-selector__btn:hover {
+        background: #475569;
+        color: #f8fafc;
+    }
+    
+    /* Dark mode event colors */
+    .sx-event[data-member="dad"],
+    .sx-event[data-calendar-id="parent1"] {
+        background: linear-gradient(135deg, #1e3a5f, #1e40af);
+    }
+    
+    .sx-event[data-member="mom"],
+    .sx-event[data-calendar-id="parent2"] {
+        background: linear-gradient(135deg, #4a1942, #831843);
+    }
+    
+    .sx-event[data-member="child1"],
+    .sx-event[data-calendar-id="child1"] {
+        background: linear-gradient(135deg, #064e3b, #065f46);
+    }
+    
+    .sx-event[data-calendar-id="family"] {
+        background: linear-gradient(135deg, #7c2d12, #9a3412);
+    }
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+
+@keyframes family-calendar-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+@keyframes family-calendar-bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-2px);
+    }
+}
+
+/* Loading state animation */
+.schedule-x-calendar-wrapper--loading .sx-event {
+    animation: family-calendar-pulse 1.5s ease-in-out infinite;
+}
+
+/* New event animation */
+.sx-event--new {
+    animation: family-calendar-bounce 0.3s ease-out;
+}
+
+/* ============================================
+   Accessibility Enhancements
+   ============================================ */
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    .sx-event {
+        border-width: 2px;
+    }
+    
+    .sx-calendar-header__btn,
+    .sx-view-selector__btn {
+        border-width: 2px;
+    }
+    
+    .sx-month-grid__day {
+        border-width: 2px;
+    }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .sx-event,
+    .sx-calendar-header__btn,
+    .sx-view-selector__btn,
+    .sx-month-grid__day,
+    .family-member-avatar {
+        transition: none;
+    }
+    
+    .sx-event--is-dragging {
+        transform: none;
+    }
+    
+    .schedule-x-calendar-wrapper--loading .sx-event,
+    .sx-event--new {
+        animation: none;
+    }
+}
+
+/* Focus visible for keyboard navigation */
+.sx-event:focus-visible,
+.sx-calendar-header__btn:focus-visible,
+.sx-view-selector__btn:focus-visible,
+.sx-month-grid__day:focus-visible {
+    outline: 3px solid var(--family-primary);
+    outline-offset: 2px;
+}
+
+/* Screen reader only class */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

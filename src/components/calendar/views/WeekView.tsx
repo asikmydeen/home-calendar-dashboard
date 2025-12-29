@@ -149,7 +149,11 @@ export function WeekView() {
                     <span className="text-xs text-slate-400 font-medium">All day</span>
                 </div>
                 {weekDays.map(day => {
-                    const allDayEvents = getEventsForDate(filteredEvents, day).filter(e => e.isAllDay);
+                    const rawAllDayEvents = getEventsForDate(filteredEvents, day).filter(e => e.isAllDay);
+                    // Deduplicate events by ID (same event may exist in multiple accounts)
+                    const allDayEvents = rawAllDayEvents.filter((event, index, self) =>
+                        index === self.findIndex(e => e.id === event.id)
+                    );
 
                     return (
                         <div
@@ -226,8 +230,12 @@ export function WeekView() {
                     <div className="absolute top-0 left-16 right-0 bottom-0 pointer-events-none">
                         <div className="relative h-full flex">
                             {weekDays.map(day => {
-                                const dayEvents = sortEventsByTime(
+                                const rawDayEvents = sortEventsByTime(
                                     getEventsForDate(filteredEvents, day).filter(e => !e.isAllDay)
+                                );
+                                // Deduplicate events by ID (same event may exist in multiple accounts)
+                                const dayEvents = rawDayEvents.filter((event, index, self) =>
+                                    index === self.findIndex(e => e.id === event.id)
                                 );
 
                                 return (

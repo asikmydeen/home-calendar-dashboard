@@ -67,7 +67,11 @@ export function MonthView() {
                             const isCurrentMonth = isSameMonth(day, selectedDate);
                             const isTodayDate = isToday(day);
                             const isWeekend = dayIndex === 0 || dayIndex === 6;
-                            const dayEvents = sortEventsByTime(getEventsForDate(filteredEvents, day));
+                            const rawDayEvents = sortEventsByTime(getEventsForDate(filteredEvents, day));
+                            // Deduplicate events by ID (same event may exist in multiple accounts)
+                            const dayEvents = rawDayEvents.filter((event, index, self) =>
+                                index === self.findIndex(e => e.id === event.id)
+                            );
                             const maxVisibleEvents = 3;
                             const hiddenCount = Math.max(0, dayEvents.length - maxVisibleEvents);
 

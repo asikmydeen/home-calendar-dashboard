@@ -87,7 +87,7 @@ export interface DashboardTheme {
     value: string;
   };
   font: 'inter' | 'outfit' | 'space-grotesk' | 'playfair' | 'jetbrains-mono';
-  widgetStyle: 'solid' | 'glass' | 'transparent';
+  widgetStyle: 'solid' | 'glass' | 'transparent' | 'frameless';
   accentColor: string;
   overlay?: OverlayEffect;
 }

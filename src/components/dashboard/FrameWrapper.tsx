@@ -9,7 +9,7 @@ interface FrameWrapperProps extends React.HTMLAttributes<HTMLDivElement> {
   onRemove: (id: string) => void;
   onEdit: (id: string) => void;
   children: React.ReactNode;
-  widgetStyle?: 'solid' | 'glass' | 'transparent';
+  widgetStyle?: 'solid' | 'glass' | 'transparent' | 'frameless';
   // properties passed by react-grid-layout
   style?: React.CSSProperties;
   className?: string;
@@ -19,12 +19,14 @@ interface FrameWrapperProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 // Widget style classes
-const getWidgetClasses = (style: 'solid' | 'glass' | 'transparent') => {
+const getWidgetClasses = (style: 'solid' | 'glass' | 'transparent' | 'frameless') => {
   switch (style) {
     case 'glass':
       return 'bg-white/10 backdrop-blur-xl border border-white/20 shadow-xl';
     case 'transparent':
       return 'bg-transparent border border-white/10';
+    case 'frameless':
+      return 'bg-transparent border-0 shadow-none';
     case 'solid':
     default:
       return 'bg-zinc-900/90 border border-zinc-700 shadow-lg';
@@ -35,12 +37,17 @@ const getWidgetClasses = (style: 'solid' | 'glass' | 'transparent') => {
 export const FrameWrapper = React.forwardRef<HTMLDivElement, FrameWrapperProps>(
   ({ frame, isEditMode, onRemove, onEdit, children, widgetStyle = 'glass', style, className, onMouseDown, onMouseUp, onTouchEnd, ...props }, ref) => {
 
+    // In frameless mode without edit mode, hide header and borders completely
+    const isFrameless = widgetStyle === 'frameless';
+    const showHeader = isEditMode || (frame.title && !isFrameless);
+
     return (
       <div
         ref={ref}
         style={style}
         className={clsx(
-          "rounded-2xl flex flex-col transition-all duration-300 h-full",
+          "flex flex-col transition-all duration-300 h-full",
+          isFrameless ? "" : "rounded-2xl",
           getWidgetClasses(widgetStyle),
           isEditMode ? "ring-2 ring-purple-500/50 shadow-purple-500/20 shadow-lg" : "",
           className
@@ -50,10 +57,11 @@ export const FrameWrapper = React.forwardRef<HTMLDivElement, FrameWrapperProps>(
         onTouchEnd={onTouchEnd}
         {...props}
       >
-        {/* Header - Only visible in edit mode or if title exists */}
-        {(isEditMode || frame.title) && (
+        {/* Header - Only visible in edit mode or if title exists (hidden in frameless mode unless editing) */}
+        {showHeader && (
           <div className={clsx(
-            "flex items-center justify-between px-3 py-2 border-b border-white/10",
+            "flex items-center justify-between px-3 py-2",
+            isFrameless ? "" : "border-b border-white/10",
             isEditMode ? "cursor-move draggable-handle bg-white/5" : ""
           )}>
             <div className="flex items-center gap-2">
@@ -83,7 +91,10 @@ export const FrameWrapper = React.forwardRef<HTMLDivElement, FrameWrapperProps>(
         )}
 
         {/* Content */}
-        <div className="flex-1 min-h-0 overflow-hidden relative rounded-b-2xl">
+        <div className={clsx(
+          "flex-1 min-h-0 overflow-hidden relative",
+          isFrameless ? "" : "rounded-b-2xl"
+        )}>
           {children}
           {/* Overlay in edit mode to prevent interaction with iframe/inputs while dragging */}
           {/* z-[5] is lower than resize handles (z-100) so resizing still works */}

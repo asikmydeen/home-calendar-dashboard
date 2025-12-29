@@ -47,6 +47,7 @@ const WIDGET_STYLES = [
     { id: 'solid', name: 'Solid', desc: 'Opaque backgrounds' },
     { id: 'glass', name: 'Glass', desc: 'Frosted blur effect' },
     { id: 'transparent', name: 'Transparent', desc: 'See-through widgets' },
+    { id: 'frameless', name: 'Frameless', desc: 'No borders or frames' },
 ];
 
 export default function DashboardSettings({ dashboard, isOpen, onClose, onSave }: DashboardSettingsProps) {

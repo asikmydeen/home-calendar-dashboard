@@ -37,8 +37,13 @@ export function AgendaView() {
             event => !isBefore(endOfDay(new Date(event.start)), anchorDate)
         );
 
-        const eventsByDate = new Map<string, typeof upcomingEvents>();
-        upcomingEvents.forEach(event => {
+        // Deduplicate events by ID (same event may exist in multiple accounts)
+        const deduplicatedEvents = upcomingEvents.filter((event, index, self) =>
+            index === self.findIndex(e => e.id === event.id)
+        );
+
+        const eventsByDate = new Map<string, typeof deduplicatedEvents>();
+        deduplicatedEvents.forEach(event => {
             const dateKey = format(new Date(event.start), 'yyyy-MM-dd');
             if (!eventsByDate.has(dateKey)) {
                 eventsByDate.set(dateKey, []);

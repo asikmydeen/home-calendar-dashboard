@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Trash2, AlertCircle, CheckCircle, RefreshCw, User } from 'lucide-react';
+import { Plus, Trash2, AlertCircle, CheckCircle, RefreshCw, User, AlertTriangle, RotateCcw } from 'lucide-react';
 import { PROVIDER_INFO, formatLastSynced } from '@/types/account';
 import { GoogleAccountConnect } from './GoogleAccountConnect';
 import { AppleAccountConnect } from './AppleAccountConnect';
@@ -12,7 +12,7 @@ import { useHousehold } from '@/contexts/HouseholdContext';
 type AddAccountMode = null | { provider: 'google' | 'apple' | 'caldav'; memberId: string };
 
 export function AccountsTab() {
-    const { accounts, isLoading, syncStatus, disconnectAccount, syncAllAccounts } = useAccounts();
+    const { accounts, isLoading, syncStatus, disconnectAccount, syncAllAccounts, reconnectAccount, accountsNeedingReauth } = useAccounts();
     const { familyMembers } = useHousehold();
     const [addMode, setAddMode] = useState<AddAccountMode>(null);
     const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
@@ -32,6 +32,14 @@ export function AccountsTab() {
             await syncAllAccounts();
         } catch (error: any) {
             alert('Sync failed: ' + error.message);
+        }
+    };
+
+    const handleReconnect = async (accountId: string) => {
+        try {
+            await reconnectAccount(accountId);
+        } catch (error: any) {
+            alert('Failed to reconnect: ' + error.message);
         }
     };
 
@@ -78,11 +86,47 @@ export function AccountsTab() {
 
     return (
         <div className="space-y-6">
+            {/* Accounts Needing Re-authentication Banner */}
+            {accountsNeedingReauth.length > 0 && (
+                <div className="p-4 bg-red-900/30 rounded-lg border border-red-700/50">
+                    <div className="flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                            <h3 className="text-sm font-medium text-red-300 mb-1">
+                                {accountsNeedingReauth.length} account{accountsNeedingReauth.length !== 1 ? 's need' : ' needs'} re-authentication
+                            </h3>
+                            <p className="text-xs text-red-400/80 mb-3">
+                                Google authorization has expired or been revoked. Please reconnect to continue syncing.
+                            </p>
+                            <div className="space-y-2">
+                                {accountsNeedingReauth.map(account => (
+                                    <div key={account.accountId} className="flex items-center justify-between p-2 bg-red-900/20 rounded">
+                                        <span className="text-sm text-white">{account.email}</span>
+                                        <button
+                                            onClick={() => handleReconnect(account.accountId)}
+                                            className="flex items-center gap-1.5 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
+                                        >
+                                            <RotateCcw className="w-3 h-3" />
+                                            Reconnect
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Sync Status Bar */}
             {accounts.length > 0 && (
                 <div className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50">
                     <span className="text-sm text-zinc-400">
                         {accounts.length} account{accounts.length !== 1 ? 's' : ''} connected
+                        {accountsNeedingReauth.length > 0 && (
+                            <span className="text-red-400 ml-1">
+                                ({accountsNeedingReauth.length} need{accountsNeedingReauth.length !== 1 ? '' : 's'} attention)
+                            </span>
+                        )}
                     </span>
                     <button
                         onClick={handleSync}
@@ -168,34 +212,59 @@ export function AccountsTab() {
                                 <div className="space-y-2 pl-11">
                                     {memberAccounts.map(account => {
                                         const provider = PROVIDER_INFO[account.provider];
+                                        const needsReauth = account.needsReauth;
+                                        
                                         return (
                                             <div
                                                 key={account.accountId}
-                                                className="flex items-center justify-between p-3 bg-zinc-800/30 rounded-lg border border-zinc-700/30"
+                                                className={`flex items-center justify-between p-3 rounded-lg border ${
+                                                    needsReauth
+                                                        ? 'bg-red-900/20 border-red-700/30'
+                                                        : 'bg-zinc-800/30 border-zinc-700/30'
+                                                }`}
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <span className="text-lg">{provider?.icon || '📧'}</span>
                                                     <div>
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-sm text-white">{account.email}</span>
-                                                            {account.isConnected ? (
+                                                            {needsReauth ? (
+                                                                <AlertTriangle className="w-3 h-3 text-red-400" />
+                                                            ) : account.isConnected ? (
                                                                 <CheckCircle className="w-3 h-3 text-green-500" />
                                                             ) : (
-                                                                <AlertCircle className="w-3 h-3 text-red-500" />
+                                                                <AlertCircle className="w-3 h-3 text-amber-500" />
                                                             )}
                                                         </div>
-                                                        <span className="text-xs text-zinc-500">
-                                                            {formatLastSynced(account.lastSyncedAt)}
-                                                        </span>
+                                                        {needsReauth ? (
+                                                            <span className="text-xs text-red-400">
+                                                                Authorization expired - reconnect required
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-xs text-zinc-500">
+                                                                {formatLastSynced(account.lastSyncedAt)}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
-                                                <button
-                                                    onClick={() => handleRemoveAccount(account.accountId)}
-                                                    className="p-1.5 hover:bg-red-500/20 rounded transition-colors"
-                                                    title="Remove account"
-                                                >
-                                                    <Trash2 className="w-4 h-4 text-zinc-500 hover:text-red-400" />
-                                                </button>
+                                                <div className="flex items-center gap-1">
+                                                    {needsReauth && (
+                                                        <button
+                                                            onClick={() => handleReconnect(account.accountId)}
+                                                            className="p-1.5 hover:bg-red-500/30 rounded transition-colors"
+                                                            title="Reconnect account"
+                                                        >
+                                                            <RotateCcw className="w-4 h-4 text-red-400 hover:text-red-300" />
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleRemoveAccount(account.accountId)}
+                                                        className="p-1.5 hover:bg-red-500/20 rounded transition-colors"
+                                                        title="Remove account"
+                                                    >
+                                                        <Trash2 className="w-4 h-4 text-zinc-500 hover:text-red-400" />
+                                                    </button>
+                                                </div>
                                             </div>
                                         );
                                     })}

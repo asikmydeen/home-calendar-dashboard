@@ -24,7 +24,7 @@ interface DashboardGridProps {
   onLayoutChange: (frames: Frame[]) => void;
   onRemoveFrame: (id: string) => void;
   onEditFrame: (id: string) => void;
-  widgetStyle?: 'glass' | 'solid' | 'transparent';
+  widgetStyle?: 'glass' | 'solid' | 'transparent' | 'frameless';
 }
 
 export default function DashboardGrid({

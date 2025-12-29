@@ -27,7 +27,11 @@ export function DayView() {
     const { selectedDate, filteredEvents, calendars, openEventModal } = useCalendar();
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-    const dayEvents = sortEventsByTime(getEventsForDate(filteredEvents, selectedDate));
+    const rawDayEvents = sortEventsByTime(getEventsForDate(filteredEvents, selectedDate));
+    // Deduplicate events by ID (same event may exist in multiple accounts)
+    const dayEvents = rawDayEvents.filter((event, index, self) =>
+        index === self.findIndex(e => e.id === event.id)
+    );
     const allDayEvents = dayEvents.filter(e => e.isAllDay);
     const timedEvents = dayEvents.filter(e => !e.isAllDay);
     const isTodayDate = isToday(selectedDate);

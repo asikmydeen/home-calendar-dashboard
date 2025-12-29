@@ -1,21 +1,33 @@
 'use client';
 
 import React from 'react';
+import dynamic from 'next/dynamic';
 import { useCalendar } from '@/contexts/CalendarContext';
 import { ViewSwitcher } from './ViewSwitcher';
 import { CalendarSidebar } from './CalendarSidebar';
 import { CalendarHeader } from './CalendarHeader';
 import { FamilyMemberBar } from './FamilyMemberBar';
-import { MonthView } from './views/MonthView';
-import { WeekView } from './views/WeekView';
-import { DayView } from './views/DayView';
 import { AgendaView } from './views/AgendaView';
 import { EventModal } from './EventModal';
 import { QuickAddFAB } from './QuickAddFAB';
 import { Loader2 } from 'lucide-react';
 
+// Dynamic import Schedule-X to avoid SSR issues
+const ScheduleXCalendar = dynamic(
+    () => import('./ScheduleXCalendar'),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="h-full w-full flex items-center justify-center bg-white/50">
+                <Loader2 className="w-6 h-6 animate-spin text-orange-500" />
+            </div>
+        ),
+    }
+);
+
 function CalendarContent() {
-    const { currentView, isLoading, isEventModalOpen } = useCalendar();
+    const calendarContext = useCalendar();
+    const { currentView, isLoading, isEventModalOpen } = calendarContext;
 
     if (isLoading) {
         return (
@@ -26,17 +38,12 @@ function CalendarContent() {
     }
 
     const renderView = () => {
-        switch (currentView) {
-            case 'day':
-                return <DayView />;
-            case 'week':
-                return <WeekView />;
-            case 'agenda':
-                return <AgendaView />;
-            case 'month':
-            default:
-                return <MonthView />;
+        // Use AgendaView as custom list view, Schedule-X for day/week/month
+        if (currentView === 'agenda') {
+            return <AgendaView />;
         }
+        // For day, week, and month views, use Schedule-X
+        return <ScheduleXCalendar />;
     };
 
     return (

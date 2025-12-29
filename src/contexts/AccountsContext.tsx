@@ -1,9 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { useHousehold } from './HouseholdContext';
 import { CalendarProvider as CalendarProviderType } from '@/types/account';
+import { clearAccountFromBlocklist } from './CalendarContext';
 
 // Types for calendar account management
 export interface ConnectedAccount {
@@ -15,6 +16,11 @@ export interface ConnectedAccount {
     lastSyncedAt?: Date;
     error?: string;
     linkedMemberId?: string; // Which family member this account is linked to
+    // Auth error tracking for re-authentication flow
+    authError?: 'invalid_grant' | 'missing_refresh_token' | 'refresh_failed' | null;
+    authErrorMessage?: string;
+    authErrorAt?: Date;
+    needsReauth?: boolean; // Computed: true if authError requires reconnection
 }
 
 export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
@@ -30,9 +36,12 @@ interface AccountsContextType extends AccountsState {
     // Actions
     connectGoogleAccount: (memberId: string) => Promise<void>;
     disconnectAccount: (accountId: string) => Promise<void>;
+    reconnectAccount: (accountId: string) => Promise<void>; // Re-authenticate account with auth errors
     syncAllAccounts: () => Promise<void>;
     getAccountsForMember: (memberId: string) => ConnectedAccount[];
     linkAccountToMember: (accountId: string, memberId: string) => void;
+    // Computed
+    accountsNeedingReauth: ConnectedAccount[];
 }
 
 const AccountsContext = createContext<AccountsContextType | undefined>(undefined);
@@ -103,6 +112,9 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         };
     }, [user, authLoading]);
 
+    // Track previous needsReauth state for each account to detect reconnections
+    const prevNeedsReauthRef = useRef<Map<string, boolean>>(new Map());
+
     // Derive connected accounts whenever raw data OR family members change
     useEffect(() => {
         const derivedAccounts: ConnectedAccount[] = rawAccounts.map(({ id, data }) => {
@@ -111,16 +123,39 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
                 m.connectedAccounts?.some(acc => acc.accountId === id || acc.email === data.email)
             );
 
+            // Determine if this account needs re-authentication
+            const authError = data.authError || null;
+            const needsReauth = authError === 'invalid_grant' || authError === 'missing_refresh_token';
+
             return {
                 accountId: id,
                 provider: data.provider || 'google',
                 email: data.email || '',
                 displayName: data.displayName || data.email || 'Unknown',
-                isConnected: !!data.accessToken,
+                isConnected: !!data.accessToken && !needsReauth,
                 lastSyncedAt: data.updatedAt?.toDate?.() || undefined,
                 error: data.error,
                 linkedMemberId: linkedMember?.id,
+                // Auth error tracking
+                authError: authError,
+                authErrorMessage: data.authErrorMessage || undefined,
+                authErrorAt: data.authErrorAt?.toDate?.() || undefined,
+                needsReauth,
             };
+        });
+
+        // Check for accounts that were reconnected (needsReauth went from true to false)
+        derivedAccounts.forEach(acc => {
+            const prevNeedsReauth = prevNeedsReauthRef.current.get(acc.accountId);
+            
+            // If account previously needed reauth but no longer does, it was reconnected
+            if (prevNeedsReauth === true && acc.needsReauth === false) {
+                console.log(`[AccountsContext] Account ${acc.accountId} (${acc.email}) was reconnected - clearing from blocklist`);
+                clearAccountFromBlocklist(acc.accountId);
+            }
+            
+            // Update the ref for next comparison
+            prevNeedsReauthRef.current.set(acc.accountId, acc.needsReauth ?? false);
         });
 
         setState(prev => {
@@ -282,13 +317,79 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         }
     }, [state.accounts, familyMembers, updateMember]);
 
+    // Re-authenticate an account that has auth errors
+    // This initiates a new OAuth flow for an existing account
+    const reconnectAccount = useCallback(async (accountId: string) => {
+        if (!user) {
+            throw new Error('Must be logged in to reconnect accounts');
+        }
+
+        const account = state.accounts.find(a => a.accountId === accountId);
+        if (!account) {
+            throw new Error('Account not found');
+        }
+
+        console.log('[AccountsContext] Reconnecting account:', accountId, account.email);
+
+        // Store the account ID for re-linking after OAuth
+        // We use a special flag to indicate this is a reconnection
+        localStorage.setItem('pending_google_reauth_account_id', accountId);
+        localStorage.setItem('pending_google_auth_initiated_at', Date.now().toString());
+        
+        // If linked to a member, preserve that linkage
+        if (account.linkedMemberId) {
+            localStorage.setItem('pending_google_auth_member_id', account.linkedMemberId);
+        }
+
+        try {
+            const { getFunctions, httpsCallable } = await import('firebase/functions');
+            const functions = getFunctions();
+            const getAuthUrl = httpsCallable(functions, 'getGoogleAuthUrl');
+
+            const result = await getAuthUrl({});
+            const data = result.data as { url: string };
+
+            // Open OAuth in a popup window
+            const width = 600;
+            const height = 700;
+            const left = window.screenX + (window.innerWidth - width) / 2;
+            const top = window.screenY + (window.innerHeight - height) / 2;
+
+            const popup = window.open(
+                data.url,
+                'google-oauth-popup',
+                `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+            );
+
+            if (!popup) {
+                throw new Error('Popup was blocked. Please allow popups for this site.');
+            }
+
+            console.log('[AccountsContext] Opened OAuth popup for reconnection:', accountId);
+
+        } catch (error: any) {
+            console.error('Error getting Google auth URL for reconnection:', error);
+            localStorage.removeItem('pending_google_reauth_account_id');
+            localStorage.removeItem('pending_google_auth_member_id');
+            localStorage.removeItem('pending_google_auth_initiated_at');
+            throw new Error(error.message || 'Failed to initiate Google reconnection');
+        }
+    }, [user, state.accounts]);
+
+    // Computed: accounts that need re-authentication
+    const accountsNeedingReauth = React.useMemo(() => {
+        return state.accounts.filter(acc => acc.needsReauth);
+    }, [state.accounts]);
+
     const value: AccountsContextType = {
         ...state,
         connectGoogleAccount,
         disconnectAccount,
+        reconnectAccount,
         syncAllAccounts,
         getAccountsForMember,
         linkAccountToMember,
+        accountsNeedingReauth,
     };
 
     return (

@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { functions } from '@/lib/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { DashboardLayout, DEFAULT_THEME, DashboardPage } from '@/types/dashboard';
 import { Loader2, AlertCircle } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { DisplayCalendarProvider, RawCalendarData } from '@/contexts/DisplayCalendarContext';
+import { FamilyMember } from '@/types/calendar';
 
 const DashboardGrid = dynamic(() => import('@/components/dashboard/DashboardGrid'), { ssr: false });
 const PageCarousel = dynamic(() => import('@/components/dashboard/PageCarousel'), { ssr: false });
@@ -21,11 +23,66 @@ const FONT_CLASSES: Record<string, string> = {
     'jetbrains-mono': 'font-mono',
 };
 
+/**
+ * Display data response from getDisplayData Cloud Function
+ * This is similar to DashboardLayout but with additional display-specific fields
+ */
+interface DisplayDataResponse {
+    // Dashboard data
+    id: string;
+    name: string;
+    ownerId: string;
+    pages: DashboardPage[];
+    currentPageIndex: number;
+    createdAt: number;
+    updatedAt: number;
+    cols: number;
+    theme?: typeof DEFAULT_THEME;
+    
+    // Display-specific
+    notFound?: boolean;
+    calendarData?: RawCalendarData | null;
+    familyMembers?: FamilyMember[];
+}
+
+/**
+ * Wrapper component that conditionally provides calendar context for display mode
+ */
+function DisplayCalendarWrapper({
+    calendarData,
+    familyMembers,
+    displayId,
+    children
+}: {
+    calendarData: RawCalendarData | null | undefined;
+    familyMembers?: FamilyMember[];
+    displayId: string;
+    children: ReactNode;
+}) {
+    // If we have calendar data, wrap children with the DisplayCalendarProvider
+    if (calendarData && calendarData.events) {
+        return (
+            <DisplayCalendarProvider
+                calendarData={calendarData}
+                familyMembers={familyMembers || []}
+                displayId={displayId}
+            >
+                {children}
+            </DisplayCalendarProvider>
+        );
+    }
+    
+    // Otherwise, render children without the calendar context
+    return <>{children}</>;
+}
+
 function DisplayPageContent() {
     const searchParams = useSearchParams();
     const displayId = searchParams.get('id');
 
     const [dashboard, setDashboard] = useState<DashboardLayout | null>(null);
+    const [calendarData, setCalendarData] = useState<RawCalendarData | null>(null);
+    const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [currentPageIndex, setCurrentPageIndex] = useState(0);
@@ -41,12 +98,25 @@ function DisplayPageContent() {
             try {
                 const getDisplayData = httpsCallable(functions, 'getDisplayData');
                 const result = await getDisplayData({ displayId });
-                const data = result.data as DashboardLayout & { notFound?: boolean };
+                const data = result.data as DisplayDataResponse;
 
                 if (data.notFound) {
                     setError('Dashboard not found for this display owner.');
                 } else {
-                    setDashboard(data);
+                    // Extract calendar data if present
+                    const { calendarData: calData, familyMembers: members, ...dashboardData } = data;
+                    
+                    setDashboard(dashboardData);
+                    setCalendarData(calData || null);
+                    setFamilyMembers(members || []);
+                    
+                    if (calData) {
+                        console.log('[DisplayPage] Loaded calendar data:', {
+                            eventsCount: calData.events?.length || 0,
+                            calendarsCount: calData.calendars?.length || 0,
+                            accountsCount: calData.accounts?.length || 0,
+                        });
+                    }
                 }
             } catch (err: any) {
                 console.error('Error fetching display data:', err);
@@ -88,62 +158,64 @@ function DisplayPageContent() {
     };
 
     return (
-        <main
-            className={`h-screen w-screen text-white relative overflow-hidden ${FONT_CLASSES[theme.font] || 'font-sans'}`}
-            style={backgroundStyle}
-        >
-            {/* Dark Overlay */}
-            <div className="absolute inset-0 bg-black/20 pointer-events-none" />
-
-            {/* Visual Effects Overlay */}
-            {theme.overlay && theme.overlay !== 'none' && (
-                <VisualOverlay effect={theme.overlay} />
-            )}
-
-            {/* Page Carousel */}
-            <PageCarousel
-                pages={dashboard.pages}
-                currentPageIndex={currentPageIndex}
-                onPageChange={goToPage}
+        <DisplayCalendarWrapper calendarData={calendarData} familyMembers={familyMembers} displayId={displayId || ''}>
+            <main
+                className={`h-screen w-screen text-white relative overflow-hidden ${FONT_CLASSES[theme.font] || 'font-sans'}`}
+                style={backgroundStyle}
             >
-                {(page: DashboardPage, index: number) => (
-                    <div className="h-full w-full p-4 md:p-6 flex flex-col">
-                        {/* Page Title (Hidden but kept for layout consistency if needed, or maybe showing it is good) */}
-                        {/* Let's show it subtly */}
-                        <h1 className="text-2xl font-light mb-4 text-white/50 select-none drop-shadow-lg shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {page.name}
-                        </h1>
+                {/* Dark Overlay */}
+                <div className="absolute inset-0 bg-black/20 pointer-events-none" />
 
-                        <div className="flex-1 min-h-0 overflow-visible">
-                            {page.frames.length > 0 ? (
-                                <DashboardGrid
-                                    frames={page.frames}
-                                    isEditMode={false} // Read-only
-                                    onLayoutChange={() => { }}
-                                    onRemoveFrame={() => { }}
-                                    onEditFrame={() => { }}
-                                    widgetStyle={theme.widgetStyle}
-                                />
-                            ) : (
-                                <div className="empty-page-placeholder">
-                                    <div className="text-6xl mb-4">✨</div>
-                                    <p className="text-xl">Empty page</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                {/* Visual Effects Overlay */}
+                {theme.overlay && theme.overlay !== 'none' && (
+                    <VisualOverlay effect={theme.overlay} />
                 )}
-            </PageCarousel>
 
-            {/* Page Indicator (Optional for display, maybe auto-hide?) */}
-            {/* Keeping it for manual navigation if touch enabled */}
-            <PageIndicator
-                pages={dashboard.pages}
-                currentIndex={currentPageIndex}
-                onPageSelect={goToPage}
-                isEditMode={false}
-            />
-        </main>
+                {/* Page Carousel */}
+                <PageCarousel
+                    pages={dashboard.pages}
+                    currentPageIndex={currentPageIndex}
+                    onPageChange={goToPage}
+                >
+                    {(page: DashboardPage, index: number) => (
+                        <div className="h-full w-full p-4 md:p-6 flex flex-col">
+                            {/* Page Title (Hidden but kept for layout consistency if needed, or maybe showing it is good) */}
+                            {/* Let's show it subtly */}
+                            <h1 className="text-2xl font-light mb-4 text-white/50 select-none drop-shadow-lg shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {page.name}
+                            </h1>
+
+                            <div className="flex-1 min-h-0 overflow-visible">
+                                {page.frames.length > 0 ? (
+                                    <DashboardGrid
+                                        frames={page.frames}
+                                        isEditMode={false} // Read-only
+                                        onLayoutChange={() => { }}
+                                        onRemoveFrame={() => { }}
+                                        onEditFrame={() => { }}
+                                        widgetStyle={theme.widgetStyle}
+                                    />
+                                ) : (
+                                    <div className="empty-page-placeholder">
+                                        <div className="text-6xl mb-4">✨</div>
+                                        <p className="text-xl">Empty page</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </PageCarousel>
+
+                {/* Page Indicator (Optional for display, maybe auto-hide?) */}
+                {/* Keeping it for manual navigation if touch enabled */}
+                <PageIndicator
+                    pages={dashboard.pages}
+                    currentIndex={currentPageIndex}
+                    onPageSelect={goToPage}
+                    isEditMode={false}
+                />
+            </main>
+        </DisplayCalendarWrapper>
     );
 }
 

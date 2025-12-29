@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useReducer, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, ReactNode, useRef, useMemo } from 'react';
 import { addDays, addWeeks, addMonths, startOfDay, startOfWeek, startOfMonth } from 'date-fns';
 import {
     CalendarState,
@@ -17,9 +17,72 @@ import { RRule } from 'rrule';
 import { useAuth } from './AuthContext';
 import { useHousehold } from './HouseholdContext';
 import { useAccounts } from './AccountsContext';
+import { DisplayCalendarContext, DisplayCalendarContextType } from './DisplayCalendarContext';
 
 // Storage keys
 const STORAGE_KEY = 'home-calendar-events-v2';
+
+// ============================================================================
+// MODULE-LEVEL PERMANENT BLOCKLIST FOR FAILED ACCOUNTS
+// This survives component re-mounts and prevents retrying accounts that have
+// failed with non-retryable errors (auth expired, quota exceeded, etc.)
+// NOTE: Accounts with needsReauth flag are NOT permanently blocked - they are
+// just skipped temporarily until reconnected. Only actual API failures result
+// in permanent blocking.
+// ============================================================================
+const PERMANENTLY_FAILED_ACCOUNTS = new Set<string>();
+
+// Non-retryable error patterns - these should NEVER be retried
+// NOTE: These are actual API errors, not flags set on the account
+const NON_RETRYABLE_ERROR_PATTERNS = [
+    'authorization expired',
+    'invalid_grant',
+    'invalid_token',
+    'Token has been expired or revoked',
+    'Quota exceeded',
+    'rate limit',
+    'PERMISSION_DENIED',
+    'access_denied',
+    'Please reconnect your Google account',
+];
+
+/**
+ * Check if an error message indicates a non-retryable failure
+ */
+function isNonRetryableError(errorMessage: string): boolean {
+    const lowerMessage = errorMessage.toLowerCase();
+    return NON_RETRYABLE_ERROR_PATTERNS.some(pattern =>
+        lowerMessage.includes(pattern.toLowerCase())
+    );
+}
+
+/**
+ * Mark an account as permanently failed (module-level, survives re-mounts)
+ */
+function markAccountAsPermanentlyFailed(accountId: string, reason: string): void {
+    if (!PERMANENTLY_FAILED_ACCOUNTS.has(accountId)) {
+        console.warn(`[CalendarContext] PERMANENTLY blocking account ${accountId}: ${reason}`);
+        PERMANENTLY_FAILED_ACCOUNTS.add(accountId);
+    }
+}
+
+/**
+ * Check if an account is permanently blocked
+ */
+function isAccountPermanentlyBlocked(accountId: string): boolean {
+    return PERMANENTLY_FAILED_ACCOUNTS.has(accountId);
+}
+
+/**
+ * Clear an account from the permanent blocklist (called when account is reconnected)
+ * This allows the account to be fetched again after successful re-authentication
+ */
+export function clearAccountFromBlocklist(accountId: string): void {
+    if (PERMANENTLY_FAILED_ACCOUNTS.has(accountId)) {
+        console.log(`[CalendarContext] Clearing account ${accountId} from blocklist`);
+        PERMANENTLY_FAILED_ACCOUNTS.delete(accountId);
+    }
+}
 
 // Initial state
 const initialState: CalendarState = {
@@ -221,13 +284,49 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
     const { familyMembers } = useHousehold();
     const { accounts } = useAccounts();
 
-    // Keep refs for use in the Firestore listener without triggering re-effects
-    const familyMembersRef = React.useRef(familyMembers);
-    const accountsRef = React.useRef(accounts);
+    // ========================================================================
+    // REFS FOR TRACKING FETCH STATE (no state to avoid re-render loops)
+    // ========================================================================
+    
+    // Prevent concurrent fetches - using ref to avoid re-render triggers
+    const isFetchingRef = useRef(false);
+    
+    // Track retry counts per account (ref, not state)
+    const retryCountsRef = useRef<Map<string, number>>(new Map());
+    const MAX_RETRIES = 3;
+    
+    // Debounce timer ref
+    const fetchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+    
+    // Track the last fetch timestamp to implement rate limiting
+    const lastFetchTimeRef = useRef<number>(0);
+    const MIN_FETCH_INTERVAL_MS = 5000; // Minimum 5 seconds between fetches
+
+    // Keep refs for use without triggering re-effects
+    const familyMembersRef = useRef(familyMembers);
+    const accountsRef = useRef(accounts);
     useEffect(() => {
         familyMembersRef.current = familyMembers;
         accountsRef.current = accounts;
     }, [familyMembers, accounts]);
+
+    // ========================================================================
+    // STABLE DEPENDENCY: Create a stable string key from account IDs
+    // This prevents re-triggering when account objects get new references
+    // but their IDs haven't actually changed
+    // ========================================================================
+    const accountIdsKey = useMemo(() => {
+        return accounts
+            .map(acc => acc.accountId)
+            .sort()
+            .join(',');
+    }, [accounts]);
+
+    // Stable date key (YYYY-MM format) to only re-fetch on month changes
+    const selectedMonthKey = useMemo(() => {
+        const d = state.selectedDate;
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }, [state.selectedDate]);
 
     // Load events from localStorage on mount (only user-created local events)
     useEffect(() => {
@@ -251,30 +350,124 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
         dispatch({ type: 'SET_LOADING', payload: false });
     }, []);
 
-    // Load events from Google Calendar directly (Client-side Sync)
+    // ========================================================================
+    // MAIN FETCH EFFECT - Load events from Google Calendar (Client-side Sync)
+    // ========================================================================
     useEffect(() => {
         let isMounted = true;
 
         const fetchExternalEvents = async () => {
-            // Don't fetch if auth is still loading or user is not logged in
-            if (authLoading || !user) return;
-            if (!accounts.length) return;
+            // ================================================================
+            // GUARD 1: Auth checks
+            // ================================================================
+            if (authLoading) {
+                console.log('[CalendarContext] Skipping fetch - auth still loading');
+                return;
+            }
+            if (!user) {
+                console.log('[CalendarContext] Skipping fetch - no user');
+                return;
+            }
+            
+            // ================================================================
+            // GUARD 2: Check if we have any accounts at all
+            // ================================================================
+            const currentAccounts = accountsRef.current;
+            if (!currentAccounts || currentAccounts.length === 0) {
+                console.log('[CalendarContext] Skipping fetch - no accounts configured');
+                return;
+            }
+            
+            // ================================================================
+            // GUARD 3: Filter to only fetchable accounts BEFORE starting
+            // ================================================================
+            const fetchableAccounts = currentAccounts.filter(acc => {
+                // Check module-level permanent blocklist FIRST
+                // BUT: if the account no longer has needsReauth flag, it may have been reconnected
+                // In that case, clear it from the blocklist and allow retry
+                if (isAccountPermanentlyBlocked(acc.accountId)) {
+                    // Check if account has been reconnected (needsReauth is now false)
+                    const accountNeedsReauth = (acc as any).needsReauth || (acc as any).authError;
+                    if (!accountNeedsReauth) {
+                        // Account was reconnected! Clear from blocklist and allow retry
+                        console.log(`[CalendarContext] Account ${acc.accountId} was reconnected - clearing from blocklist`);
+                        clearAccountFromBlocklist(acc.accountId);
+                        // Also reset retry count for this account
+                        retryCountsRef.current.delete(acc.accountId);
+                        // Continue to check other conditions (don't return false)
+                    } else {
+                        console.log(`[CalendarContext] Account ${acc.accountId} is PERMANENTLY blocked`);
+                        return false;
+                    }
+                }
+                
+                // Check account flags for needing reauth
+                // IMPORTANT: Do NOT permanently block accounts that just need reauth
+                // They should be skipped temporarily and will work again after reconnection
+                if ((acc as any).needsReauth || (acc as any).authError) {
+                    console.log(`[CalendarContext] Skipping ${acc.accountId} - needs reauth (temporary skip, not blocking)`);
+                    // Don't call markAccountAsPermanentlyFailed - just skip temporarily
+                    return false;
+                }
+                
+                // Check retry count
+                const currentRetries = retryCountsRef.current.get(acc.accountId) || 0;
+                if (currentRetries >= MAX_RETRIES) {
+                    console.log(`[CalendarContext] Skipping ${acc.accountId} - max retries exceeded`);
+                    markAccountAsPermanentlyFailed(acc.accountId, 'max retries exceeded');
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            // If ALL accounts are blocked/unfetchable, don't proceed
+            if (fetchableAccounts.length === 0) {
+                console.log('[CalendarContext] All accounts are blocked or need reauth - stopping fetch loop');
+                return;
+            }
+            
+            // ================================================================
+            // GUARD 4: Prevent concurrent fetches
+            // ================================================================
+            if (isFetchingRef.current) {
+                console.log('[CalendarContext] Skipping fetch - already in progress');
+                return;
+            }
+            
+            // ================================================================
+            // GUARD 5: Rate limiting - minimum interval between fetches
+            // ================================================================
+            const now = Date.now();
+            const timeSinceLastFetch = now - lastFetchTimeRef.current;
+            if (timeSinceLastFetch < MIN_FETCH_INTERVAL_MS) {
+                console.log(`[CalendarContext] Rate limited - ${MIN_FETCH_INTERVAL_MS - timeSinceLastFetch}ms until next fetch allowed`);
+                return;
+            }
+            
+            // ================================================================
+            // START FETCH
+            // ================================================================
+            isFetchingRef.current = true;
+            lastFetchTimeRef.current = now;
+            
+            console.log(`[CalendarContext] Starting fetch for ${fetchableAccounts.length} accounts`);
 
             // Determine date range based on view
-            // For safety, fetch -1 month to +1 month from selected date
             const startRange = new Date(state.selectedDate);
             startRange.setMonth(startRange.getMonth() - 1);
-            startRange.setDate(1); // Start of prev month
+            startRange.setDate(1);
 
             const endRange = new Date(state.selectedDate);
             endRange.setMonth(endRange.getMonth() + 2);
-            endRange.setDate(0); // End of next month
+            endRange.setDate(0);
 
             try {
                 const { fetchCalendarEvents } = await import('@/lib/googleCalendar');
                 let allGoogleEvents: CalendarEvent[] = [];
 
-                await Promise.all(accounts.map(async (acc) => {
+                // Process each fetchable account
+                await Promise.all(fetchableAccounts.map(async (acc) => {
                     try {
                         const events = await fetchCalendarEvents(
                             'primary',
@@ -283,17 +476,18 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
                             acc.accountId
                         );
 
-                        console.log(`[CalendarContext] Account ${acc.accountId} (${acc.email}) linked to member: ${acc.linkedMemberId}`);
+                        // Success! Reset retry count
+                        retryCountsRef.current.delete(acc.accountId);
+                        
+                        console.log(`[CalendarContext] Account ${acc.accountId} (${acc.email}) fetched ${events.length} events`);
 
                         // Transform to app format
                         const mappedEvents = events.map(e => ({
                             ...e,
-                            // Composite ID: google-{accountId}-{eventId}
                             id: `google-${acc.accountId}-${e.id}`,
                             accountId: acc.accountId,
                             calendarId: `google-primary-${acc.accountId}`,
                             category: 'synced',
-                            // Ensure dates are Date objects
                             start: new Date(e.start),
                             end: new Date(e.end),
                             createdAt: new Date(),
@@ -301,10 +495,30 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
                             recurrence: 'none' as const,
                             assignedTo: acc.linkedMemberId ? [acc.linkedMemberId] : [],
                         }));
-                        console.log(`[CalendarContext] Fetched ${mappedEvents.length} events for account ${acc.accountId}. Sample assignedTo:`, mappedEvents[0]?.assignedTo);
                         allGoogleEvents.push(...mappedEvents);
+                        
                     } catch (err) {
-                        console.error(`Failed to fetch events for account ${acc.accountId}:`, err);
+                        const errorMessage = err instanceof Error ? err.message : String(err);
+                        
+                        // Use the module-level helper to check if non-retryable
+                        if (isNonRetryableError(errorMessage)) {
+                            // PERMANENTLY block this account at module level
+                            markAccountAsPermanentlyFailed(acc.accountId, errorMessage);
+                        } else {
+                            // Increment retry count for retryable errors
+                            const currentRetries = retryCountsRef.current.get(acc.accountId) || 0;
+                            const newRetryCount = currentRetries + 1;
+                            retryCountsRef.current.set(acc.accountId, newRetryCount);
+                            console.log(`[CalendarContext] Retryable error for ${acc.accountId} (attempt ${newRetryCount}/${MAX_RETRIES}): ${errorMessage}`);
+                            
+                            // If we just hit max retries, also permanently block
+                            if (newRetryCount >= MAX_RETRIES) {
+                                markAccountAsPermanentlyFailed(acc.accountId, `max retries exceeded after: ${errorMessage}`);
+                            }
+                        }
+                        
+                        console.error(`[CalendarContext] Failed to fetch for ${acc.accountId}:`, errorMessage);
+                        // Continue with next account - don't throw
                     }
                 }));
 
@@ -318,7 +532,6 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
                         createdAt: new Date(e.createdAt),
                         updatedAt: new Date(e.updatedAt),
                     })).filter((e: CalendarEvent) =>
-                        // Filter out synced events AND any stale optimistic events for google calendars
                         !e.id.startsWith('google-') &&
                         !e.calendarId.startsWith('google-')
                     ) : [];
@@ -327,16 +540,39 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
                 }
 
             } catch (error) {
-                console.error('Failed to fetch external events:', error);
+                console.error('[CalendarContext] Critical error in fetchExternalEvents:', error);
+            } finally {
+                // ALWAYS reset the fetching flag
+                isFetchingRef.current = false;
             }
         };
 
-        fetchExternalEvents();
+        // ====================================================================
+        // DEBOUNCED EXECUTION
+        // Clear any pending fetch and schedule a new one
+        // ====================================================================
+        if (fetchDebounceRef.current) {
+            clearTimeout(fetchDebounceRef.current);
+        }
+        
+        fetchDebounceRef.current = setTimeout(() => {
+            fetchExternalEvents();
+        }, 300); // 300ms debounce
 
         return () => {
             isMounted = false;
+            if (fetchDebounceRef.current) {
+                clearTimeout(fetchDebounceRef.current);
+            }
         };
-    }, [accounts, state.selectedDate, user, authLoading]); // Re-fetch when accounts, date, or auth changes
+    // ========================================================================
+    // STABLE DEPENDENCIES ONLY:
+    // - accountIdsKey: stable string, only changes when account IDs actually change
+    // - selectedMonthKey: stable string, only changes on month change
+    // - user: user object (stable from Firebase)
+    // - authLoading: boolean
+    // ========================================================================
+    }, [accountIdsKey, selectedMonthKey, user, authLoading]);
 
     // Save events to localStorage on change
     useEffect(() => {
@@ -723,11 +959,23 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
     );
 }
 
-// Hook
+// Hook - checks DisplayCalendarContext first, falls back to CalendarContext
+// This allows calendar components to work in both authenticated and display modes
 export function useCalendar() {
-    const context = useContext(CalendarContext);
-    if (!context) {
-        throw new Error('useCalendar must be used within a CalendarProvider');
+    const displayContext = useContext(DisplayCalendarContext);
+    const calendarContext = useContext(CalendarContext);
+    
+    // If we're in display mode (DisplayCalendarProvider is present), use that context
+    if (displayContext) {
+        return displayContext as unknown as CalendarContextType;
     }
-    return context;
+    
+    // Otherwise, use the regular CalendarContext
+    if (!calendarContext) {
+        throw new Error('useCalendar must be used within a CalendarProvider or DisplayCalendarProvider');
+    }
+    return calendarContext;
 }
+
+// Export the context type for external use
+export type { CalendarContextType };
