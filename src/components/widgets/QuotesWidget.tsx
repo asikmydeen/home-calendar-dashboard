@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Frame } from '@/types/dashboard';
 import { Quote, QuoteCategory, QUOTE_CATEGORIES, getRandomQuote, getQuotesByCategory } from '@/data/quotes';
 import { RefreshCw, Quote as QuoteIcon } from 'lucide-react';
+import { clsx } from 'clsx';
 
 interface QuotesWidgetProps {
     frame: Frame;
@@ -46,7 +47,7 @@ export default function QuotesWidget({ frame, isEditMode }: QuotesWidgetProps) {
     const categoryInfo = QUOTE_CATEGORIES.find(c => c.id === currentQuote.category);
 
     return (
-        <div className="h-full flex flex-col justify-center items-center p-6 text-center relative overflow-hidden">
+        <div className="group h-full flex flex-col justify-center items-center p-6 text-center relative overflow-hidden">
             {/* Decorative quote marks */}
             <div className="absolute top-4 left-4 text-6xl opacity-10 text-white/30 font-serif select-none">
                 "
@@ -81,10 +82,11 @@ export default function QuotesWidget({ frame, isEditMode }: QuotesWidgetProps) {
             {/* Refresh button */}
             <button
                 onClick={getNewQuote}
-                className="absolute bottom-4 left-1/2 -translate-x-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                className="absolute bottom-4 left-1/2 -translate-x-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white transition-all opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
                 title="New quote"
+                aria-label="New quote"
             >
-                <RefreshCw className="w-4 h-4" />
+                <RefreshCw className={clsx("w-4 h-4", isAnimating && "animate-spin")} />
             </button>
         </div>
     );
